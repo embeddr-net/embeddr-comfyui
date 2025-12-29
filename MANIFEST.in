@@ -1,0 +1,10 @@
+include LICENSE.txt
+include README.md
+include pyproject.toml
+include __init__.py
+
+recursive-include js *
+recursive-include nodes *
+
+exclude ui
+recursive-exclude ui *

@@ -1,0 +1,19 @@
+# pyproject.toml
+[project]
+name = "embeddr-extension"
+description = "Embeddr ComfyUI Extension"
+version = "1.0.3"
+license = { file = "LICENSE.txt" }
+dependencies = [
+]
+requires-python = ">=3.8"
+
+
+[project.urls]
+Repository = "https://github.com/embeddr-net/embeddr-comfyui"
+
+[tool.comfy]
+PublisherId = "nynxz"
+DisplayName = "Embeddr ComfyUI Extension"
+Icon = "https://avatars.githubusercontent.com/u/251817691"
+includes = ["js"]

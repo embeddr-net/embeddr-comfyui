@@ -1,0 +1,7 @@
+__pycache__
+node_modules
+js
+config.json
+node.zip
+*_cache
+.venv
