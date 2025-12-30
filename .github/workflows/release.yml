@@ -39,7 +39,7 @@ jobs:
 
       - name: Create artifact archive
         run: |
-          zip -r embeddr-comfyui.zip __init__.py nodes/ js/ pyproject.toml README.md LICENSE.txt LICENSE.md components.json
+          zip -r embeddr-comfyui.zip __init__.py nodes/ js/ pyproject.toml README.md LICENSE.md components.json
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
