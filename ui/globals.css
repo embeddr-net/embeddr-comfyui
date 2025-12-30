@@ -6,7 +6,6 @@
 @custom-variant dark (&:is(.dark *));
 
 @layer base {
-
   /* Ensure dialogs are above ComfyUI UI (which can have high z-indices) */
   .tailwind[data-slot="dialog-overlay"],
   [data-slot="dialog-overlay"] {

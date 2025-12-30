@@ -1,7 +1,7 @@
 import React from "react";
 import ReactDOM from "react-dom/client";
-// @ts-ignore
 import { ImageDialogProvider } from "@embeddr/react-ui/providers/ImageDialogProvider";
+// @ts-ignore
 import { app } from "../../../scripts/app.js";
 import EmbeddrPanel from "./components/panels/EmbeddrPanel.js";
 import "./nodes/EmbeddrLoadImage.js";

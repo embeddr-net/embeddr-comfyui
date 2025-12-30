@@ -1,4 +1,5 @@
 {
+  "type": "module",
   "peerDependencies": {
     "primevue": "^4.2.5",
     "vue": "^3.5.13",
@@ -13,7 +14,8 @@
     "vite-plugin-vue-devtools": "^7.7.2"
   },
   "scripts": {
-    "build": "vite build"
+    "build": "vite build",
+    "dev": "vite build --watch"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",

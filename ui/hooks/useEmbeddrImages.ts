@@ -27,7 +27,7 @@ export function useEmbeddrImages({
       searchQuery = "",
       viewMode: "all" | "mine" = "all",
       libraryId?: number | null,
-      similarId?: number | null
+      similarId?: number | null,
     ) => {
       if (!configLoaded) return;
       if (loadingRef.current && !reset) return;
@@ -123,7 +123,7 @@ export function useEmbeddrImages({
         setLoading(false);
       }
     },
-    [apiBase, configLoaded, mode, similarImageId]
+    [apiBase, configLoaded, mode, similarImageId],
   );
 
   return {

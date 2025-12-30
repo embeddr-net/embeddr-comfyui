@@ -55,7 +55,7 @@ export default function EmbeddrPanel() {
   const [viewMode, setViewMode] = useState<"all" | "mine">("all");
   const [selectedLibrary, setSelectedLibrary] = useState<string>("all");
   const [selectedImage, setSelectedImage] = useState<PromptImageRead | null>(
-    null
+    null,
   );
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -92,7 +92,7 @@ export default function EmbeddrPanel() {
       endpoint,
       mode,
       gridSize,
-      gridPreviewContain
+      gridPreviewContain,
     );
     if (success) {
       const libId =
@@ -183,7 +183,7 @@ export default function EmbeddrPanel() {
                       searchQuery,
                       viewMode,
                       libId,
-                      similarImageId
+                      similarImageId,
                     );
                   }}
                   onSimilarSearch={(image) => {
@@ -224,7 +224,7 @@ export default function EmbeddrPanel() {
                               searchQuery,
                               viewMode,
                               libId,
-                              similarImageId
+                              similarImageId,
                             );
                           }
                         },
@@ -248,7 +248,7 @@ export default function EmbeddrPanel() {
                           },
                         },
                       ],
-                      image.prompt
+                      image.prompt,
                     );
                   }}
                   // onSimilarSearch={setSimilarImageId}

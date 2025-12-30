@@ -42,7 +42,7 @@ export function ImageGrid({
           onLoadMore();
         }
       },
-      { threshold: 0, rootMargin: "200px" }
+      { threshold: 0, rootMargin: "200px" },
     );
 
     if (observerTarget.current) {
@@ -88,7 +88,7 @@ export function ImageGrid({
               alt={image.prompt}
               className={cn(
                 "w-full h-full transition-transform group-hover:scale-105",
-                imagePreviewContain ? "object-contain" : "object-cover"
+                imagePreviewContain ? "object-contain" : "object-cover",
               )}
               loading="lazy"
             />

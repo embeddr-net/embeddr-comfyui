@@ -1,17 +1,17 @@
 {
-    "compilerOptions": {
-        "target": "ES2022",
-        "useDefineForClassFields": true,
-        "jsx": "react-jsx",
+  "compilerOptions": {
+    "target": "ES2022",
+    "useDefineForClassFields": true,
+    "jsx": "react-jsx",
 
-        "module": "ESNext",
-        "resolveJsonModule": true,
-        "paths": {
-            "@components/*": ["./ui/components/*"],
-            "@hooks/*": ["./ui/hooks/*"],
-            "@types": ["./ui/types.ts"]
-        },
-        "typeRoots": ["src/types", "node_modules/@types"]
+    "module": "ESNext",
+    "resolveJsonModule": true,
+    "paths": {
+      "@components/*": ["./ui/components/*"],
+      "@hooks/*": ["./ui/hooks/*"],
+      "@types": ["./ui/types.ts"]
     },
-    "exclude": ["node_modules", "dist", "js"]
+    "typeRoots": ["src/types", "node_modules/@types"]
+  },
+  "exclude": ["node_modules", "dist", "js"]
 }
