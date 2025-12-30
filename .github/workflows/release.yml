@@ -40,7 +40,7 @@ jobs:
       - name: Create artifact archive
         run: |
           mkdir comfyui-embeddr 
-          cp -r __init__.py nodes js pyproject.toml README.md LICENSE.md components comfyui-embeddr/
+          cp -r __init__.py nodes js pyproject.toml README.md LICENSE.md comfyui-embeddr/
           zip -r comfyui-embeddr.zip comfyui-embeddr
 
       - name: Create GitHub Release
