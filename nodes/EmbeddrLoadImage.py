@@ -3,7 +3,7 @@ import torch
 import numpy as np
 from PIL import Image, ImageOps
 from io import BytesIO
-from comfy_api.latest import io
+from comfy_api.latest import io, ui
 
 
 class EmbeddrLoadImageNode(io.ComfyNode):
@@ -56,7 +56,7 @@ class EmbeddrLoadImageNode(io.ComfyNode):
                 mask = torch.zeros((64, 64), dtype=torch.float32, device="cpu")
 
             cls._cache[image_url] = (image, mask)
-            return io.NodeOutput(image, mask)
+            return io.NodeOutput(image, mask, ui=ui.PreviewImage(image))
 
         except Exception as e:
             print(f"[Embeddr] Error loading image: {e}")

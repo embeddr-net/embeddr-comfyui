@@ -2,8 +2,8 @@
 [project]
 name = "embeddr-extension"
 description = "Embeddr ComfyUI Extension"
-version = "1.0.4"
-license = { file = "LICENSE.txt" }
+version = "1.0.5"
+license = { file = "LICENSE.md" }
 dependencies = []
 requires-python = ">=3.8"
 
