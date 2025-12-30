@@ -41,8 +41,9 @@ jobs:
 
             - name: Create artifact archive
               run: |
-                  mkdir -p dist-artifact
-                  zip -r dist-artifact/embeddr-comfyui.zip __init__.py nodes/ js/ pyproject.toml README.md LICENSE.txt LICENSE.md
+                  mkdir -p dist-artifact/embeddr-comfyui
+                  cp -r __init__.py nodes js pyproject.toml README.md LICENSE.txt LICENSE.md dist-artifact/embeddr-comfyui/
+                  zip -r dist-artifact/embeddr-comfyui.zip dist-artifact/embeddr-comfyui
 
             - name: Upload artifact
               uses: actions/upload-artifact@v4
