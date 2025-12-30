@@ -8,3 +8,5 @@ recursive-include nodes *
 
 exclude ui
 recursive-exclude ui *
+exclude dist-artifact
+recursive-exclude dist-artifact *

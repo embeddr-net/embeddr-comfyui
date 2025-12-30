@@ -1,0 +1,56 @@
+name: Publish to Comfy registry
+on:
+    workflow_dispatch:
+    push:
+        branches:
+            - main
+            - master
+        paths:
+            - "pyproject.toml"
+
+permissions:
+    issues: write
+    contents: write
+
+jobs:
+    publish-node:
+        name: Publish Custom Node to registry
+        runs-on: ubuntu-latest
+        if: ${{ github.repository_owner == 'embeddr-net' }}
+        steps:
+            - name: Check out code
+              uses: actions/checkout@v4
+              with:
+                  submodules: true
+
+            - name: Setup Node.js
+              uses: actions/setup-node@v4
+              with:
+                  node-version: "20"
+
+            - name: Install pnpm
+              uses: pnpm/action-setup@v2
+              with:
+                  version: 9
+
+            - name: Install dependencies
+              run: pnpm install
+
+            - name: Build frontend
+              run: pnpm build
+
+            - name: Create artifact archive
+              run: |
+                  mkdir -p dist-artifact
+                  zip -r dist-artifact/embeddr-comfyui.zip __init__.py nodes/ js/ pyproject.toml README.md LICENSE.txt LICENSE.md
+
+            - name: Upload artifact
+              uses: actions/upload-artifact@v4
+              with:
+                  name: embeddr-comfyui-package
+                  path: dist-artifact/embeddr-comfyui.zip
+
+            - name: Publish Custom Node
+              uses: Comfy-Org/publish-node-action@v1
+              with:
+                  personal_access_token: ${{ secrets.REGISTRY_ACCESS_TOKEN }}
