@@ -41,15 +41,15 @@ jobs:
 
             - name: Create package folder
               run: |
-                  rm -rf embeddr-comfyui
-                  mkdir embeddr-comfyui
-                  cp -r __init__.py nodes js pyproject.toml README.md LICENSE.txt LICENSE.md embeddr-comfyui/
+                  rm -rf github_artifact
+                  mkdir -p github_artifact/embeddr-comfyui
+                  cp -r __init__.py nodes js pyproject.toml README.md LICENSE.txt LICENSE.md github_artifact/embeddr-comfyui/
 
             - name: Upload artifact
               uses: actions/upload-artifact@v4
               with:
                   name: embeddr-comfyui-package
-                  path: embeddr-comfyui/
+                  path: github_artifact
 
             - name: Publish Custom Node
               uses: Comfy-Org/publish-node-action@v1
