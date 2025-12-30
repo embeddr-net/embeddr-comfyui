@@ -39,17 +39,17 @@ jobs:
             - name: Build frontend
               run: pnpm build
 
-            - name: Create artifact archive
+            - name: Create package folder
               run: |
-                  mkdir -p dist-artifact/embeddr-comfyui
-                  cp -r __init__.py nodes js pyproject.toml README.md LICENSE.txt LICENSE.md dist-artifact/embeddr-comfyui/
-                  zip -r dist-artifact/embeddr-comfyui.zip dist-artifact/embeddr-comfyui
+                  rm -rf embeddr-comfyui
+                  mkdir embeddr-comfyui
+                  cp -r __init__.py nodes js pyproject.toml README.md LICENSE.txt LICENSE.md embeddr-comfyui/
 
             - name: Upload artifact
               uses: actions/upload-artifact@v4
               with:
                   name: embeddr-comfyui-package
-                  path: dist-artifact/embeddr-comfyui.zip
+                  path: embeddr-comfyui/
 
             - name: Publish Custom Node
               uses: Comfy-Org/publish-node-action@v1
