@@ -1,6 +1,7 @@
 import React from "react";
 import ReactDOM from "react-dom/client";
 // @ts-ignore
+import { ImageDialogProvider } from "@embeddr/react-ui/providers/ImageDialogProvider";
 import { app } from "../../../scripts/app.js";
 import EmbeddrPanel from "./components/panels/EmbeddrPanel.js";
 import "./nodes/EmbeddrLoadImage.js";
@@ -14,68 +15,72 @@ document.head.appendChild(style);
 
 // Register Embeddr Sidebar
 app.extensionManager.registerSidebarTab({
-    id: "embeddr",
-    icon: "mdi mdi-cloud-search-outline", // Use the class name
-    title: "Embeddr",
-    type: "custom",
-    render(container) {
-        container.innerHTML = "";
-        container.classList.add("tailwind");
-        container.classList.add("embeddr-sidebar-container");
-        // Default to dark, but let React handle it
-        container.classList.add("dark");
-        // Prevent the parent container from scrolling
-        container.style.overflow = "hidden";
-        container.style.height = "100%";
+  id: "embeddr",
+  icon: "mdi mdi-cloud-search-outline", // Use the class name
+  title: "Embeddr",
+  type: "custom",
+  render(container) {
+    container.innerHTML = "";
+    container.classList.add("tailwind");
+    container.classList.add("embeddr-sidebar-container");
+    // Default to dark, but let React handle it
+    container.classList.add("dark");
+    // Prevent the parent container from scrolling
+    container.style.overflow = "hidden";
+    container.style.height = "100%";
 
-        // Ensure any future portals get proper styling
-        const observer = new MutationObserver((mutations) => {
-            mutations.forEach((mutation) => {
-                if (mutation.type === "childList") {
-                    const portals = document.querySelectorAll(
-                        "[data-radix-portal]"
-                    );
-                    const isDark = container.classList.contains("dark");
-                    portals.forEach((portal) => {
-                        if (!portal.classList.contains("tailwind")) {
-                            portal.classList.add("tailwind");
-                        }
-                        // Sync dark mode
-                        if (isDark) {
-                            portal.classList.add("dark");
-                        } else {
-                            portal.classList.remove("dark");
-                        }
-                    });
-                }
-            });
-        });
-        observer.observe(document.body, { childList: true, subtree: true });
+    // Ensure any future portals get proper styling
+    const observer = new MutationObserver((mutations) => {
+      mutations.forEach((mutation) => {
+        if (mutation.type === "childList") {
+          const portals = document.querySelectorAll(
+            "[data-radix-portal], [data-slot='dialog-content'], [data-slot='dialog-overlay']"
+          );
+          const isDark = container.classList.contains("dark");
+          portals.forEach((portal) => {
+            if (!portal.classList.contains("tailwind")) {
+              portal.classList.add("tailwind");
+            }
+            // // Sync dark mode
+            if (isDark) {
+              portal.classList.add("dark");
+            } else {
+              portal.classList.remove("dark");
+            }
+          });
+        }
+      });
+    });
+    observer.observe(document.body, { childList: true, subtree: true });
 
-        const root = ReactDOM.createRoot(container);
-        root.render(<EmbeddrPanel />);
-        return () => {
-            observer.disconnect();
-            root.unmount();
-        };
-    },
+    const root = ReactDOM.createRoot(container);
+    root.render(
+      <ImageDialogProvider>
+        <EmbeddrPanel />
+      </ImageDialogProvider>
+    );
+    return () => {
+      observer.disconnect();
+      root.unmount();
+    };
+  },
 });
 
 // Register Node Extension
 app.registerExtension({
-    name: "Embeddr.NodeHelper",
-    aboutPageBadges: [
-        {
-            label: "Embeddr",
-            url: "https://github.com/embeddr-net/embeddr-local",
-            icon: "pi pi-globe",
-        },
-    ],
-    async nodeCreated(node) {
-        // Handle Embeddr Load Image Node
+  name: "Embeddr.NodeHelper",
+  aboutPageBadges: [
+    {
+      label: "Embeddr",
+      url: "https://github.com/embeddr-net/embeddr-local",
+      icon: "pi pi-globe",
     },
+  ],
+  async nodeCreated(node) {
+    // Handle Embeddr Load Image Node
+  },
 
-    async loadedGraphNode(node) {
-        // No-op
-    },
+  async loadedGraphNode(node) {
+    // No-op
+  },
 });
