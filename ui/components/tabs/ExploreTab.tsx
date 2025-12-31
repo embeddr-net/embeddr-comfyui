@@ -11,13 +11,13 @@ import { useNodeScanner } from "@hooks/useNodeScanner";
 import { ImageDetails } from "../panels/ImageDetails";
 import { SearchBar } from "../ui/SearchBar";
 import type {
-  PromptImageRead,
-  LibraryPath,
   ApiMode,
+  LibraryPath,
+  PromptImageRead,
 } from "@hooks/useEmbeddrApi";
 
 interface ExploreTabProps {
-  images: PromptImageRead[];
+  images: Array<PromptImageRead>;
   loading: boolean;
   hasMore: boolean;
   fetchImages: (
@@ -27,7 +27,7 @@ interface ExploreTabProps {
     libId?: number | null,
     similarId?: number | null
   ) => Promise<void>;
-  libraries: LibraryPath[];
+  libraries: Array<LibraryPath>;
   similarImageId: number | null;
   setSimilarImageId: (id: number | null) => void;
   mode: ApiMode;

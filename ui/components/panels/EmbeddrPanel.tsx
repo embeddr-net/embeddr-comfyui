@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import { cn } from "@embeddr/react-ui/lib/utils";
 import {
   Tabs,
@@ -9,8 +9,8 @@ import {
 import { useExternalNav } from "@embeddr/react-ui";
 import { GlobeIcon, MessageCircleIcon, Search, Settings } from "lucide-react";
 import { Button } from "@embeddr/react-ui/components/button";
-import { SettingsForm } from "../tabs/SettingsForm";
 import { useEmbeddrApi } from "@hooks/useEmbeddrApi";
+import { SettingsForm } from "../tabs/SettingsForm";
 import { ExploreTab } from "../tabs/ExploreTab";
 
 export default function EmbeddrPanel() {
