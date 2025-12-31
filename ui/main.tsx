@@ -1,6 +1,7 @@
 import React from "react";
 import ReactDOM from "react-dom/client";
 import { ImageDialogProvider } from "@embeddr/react-ui/providers/ImageDialogProvider";
+import { ExternalNavProvider } from "@embeddr/react-ui";
 // @ts-ignore
 import { app } from "../../../scripts/app.js";
 import EmbeddrPanel from "./components/panels/EmbeddrPanel.js";
@@ -8,15 +9,10 @@ import "./nodes/EmbeddrLoadImage.js";
 // @ts-ignore
 import "./globals.css";
 
-// Inject CSS for the sidebar icon
-const style = document.createElement("style");
-
-document.head.appendChild(style);
-
 // Register Embeddr Sidebar
 app.extensionManager.registerSidebarTab({
   id: "embeddr",
-  icon: "mdi mdi-cloud-search-outline", // Use the class name
+  icon: "mdi mdi-cloud-search-outline",
   title: "Embeddr",
   type: "custom",
   render(container) {
@@ -34,7 +30,7 @@ app.extensionManager.registerSidebarTab({
       mutations.forEach((mutation) => {
         if (mutation.type === "childList") {
           const portals = document.querySelectorAll(
-            "[data-radix-portal], [data-slot='dialog-content'], [data-slot='dialog-overlay']"
+            "[data-radix-portal], [data-slot='dialog-content'], [data-slot='dialog-overlay'], [data-slot='select-content'], [data-slot='select-viewport'], [data-slot='popover-content'], [data-slot='dropdown-menu-content']"
           );
           const isDark = container.classList.contains("dark");
           portals.forEach((portal) => {
@@ -56,7 +52,9 @@ app.extensionManager.registerSidebarTab({
     const root = ReactDOM.createRoot(container);
     root.render(
       <ImageDialogProvider>
-        <EmbeddrPanel />
+        <ExternalNavProvider>
+          <EmbeddrPanel />
+        </ExternalNavProvider>
       </ImageDialogProvider>
     );
     return () => {
