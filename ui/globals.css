@@ -1,7 +1,7 @@
 @import "tailwindcss";
 @source "../node_modules/@embeddr/react-ui/dist/**/*";
-
 @import "tw-animate-css";
+@import "shadcn/tailwind.css";
 
 @custom-variant dark (&:is(.dark *));
 
@@ -14,6 +14,17 @@
 
   .tailwind[data-slot="dialog-content"],
   [data-slot="dialog-content"] {
+    z-index: 10000 !important;
+  }
+
+  .tailwind[data-slot="select-content"],
+  [data-slot="select-content"] {
+    z-index: 10000 !important;
+    background-color: var(--popover);
+    color: var(--popover-foreground);
+  }
+  .tailwind[data-slot="select-viewport"],
+  [data-slot="select-viewport"] {
     z-index: 10000 !important;
   }
 }
