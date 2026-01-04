@@ -2,7 +2,7 @@ import React, { useEffect, useRef } from "react";
 import { ScrollArea } from "@embeddr/react-ui/components/scroll-area";
 import { Eye, PenLineIcon } from "lucide-react";
 import { Button } from "@embeddr/react-ui/components/button";
-import { cn } from "@embeddr/react-ui/lib/utils";
+import { cn } from "@embeddr/react-ui";
 
 import type { PromptImageRead } from "@hooks/useEmbeddrApi";
 
@@ -42,7 +42,7 @@ export function ImageGrid({
           onLoadMore();
         }
       },
-      { threshold: 0, rootMargin: "200px" },
+      { threshold: 0, rootMargin: "200px" }
     );
 
     if (observerTarget.current) {
@@ -88,7 +88,7 @@ export function ImageGrid({
               alt={image.prompt}
               className={cn(
                 "w-full h-full transition-transform group-hover:scale-105",
-                imagePreviewContain ? "object-contain" : "object-cover",
+                imagePreviewContain ? "object-contain" : "object-cover"
               )}
               loading="lazy"
             />

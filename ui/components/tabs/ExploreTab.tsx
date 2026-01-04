@@ -5,7 +5,8 @@ import {
   ResizablePanel,
   ResizablePanelGroup,
 } from "@embeddr/react-ui/components/resizable";
-import { Search } from "lucide-react";
+import { Search, Grid3X3 } from "lucide-react";
+import { Slider } from "@embeddr/react-ui/components/slider";
 import { ImageGrid } from "@components/ui/ImageGrid";
 import { useNodeScanner } from "@hooks/useNodeScanner";
 import { ImageDetails } from "../panels/ImageDetails";
@@ -32,9 +33,11 @@ interface ExploreTabProps {
   setSimilarImageId: (id: number | null) => void;
   mode: ApiMode;
   gridSize: number;
+  setGridSize?: (size: number) => void;
   gridPreviewContain: boolean;
   configLoaded: boolean;
   activeTab: string;
+  onImageSelect?: (image: PromptImageRead) => void;
 }
 
 export function ExploreTab({
@@ -47,9 +50,11 @@ export function ExploreTab({
   setSimilarImageId,
   mode,
   gridSize,
+  setGridSize,
   gridPreviewContain,
   configLoaded,
   activeTab,
+  onImageSelect,
 }: ExploreTabProps) {
   const { targetNodes, handleLoadIntoNode, handleUseImage } = useNodeScanner();
   const { openImage, closeImage, setGalleryImages, currentGallery } =
@@ -62,13 +67,10 @@ export function ExploreTab({
     null
   );
   const scrollRef = useRef<HTMLDivElement>(null);
-  const didInitialFetch = useRef(false);
 
-  // Initial fetch
+  // Fetch when dependencies change
   useEffect(() => {
     if (!configLoaded) return;
-    if (didInitialFetch.current) return;
-    didInitialFetch.current = true;
     const libId = selectedLibrary === "all" ? null : parseInt(selectedLibrary);
     fetchImages(true, searchQuery, viewMode, libId, similarImageId);
   }, [viewMode, configLoaded, selectedLibrary, mode, similarImageId]); // Re-fetch when view mode changes or config is loaded
@@ -94,26 +96,46 @@ export function ExploreTab({
 
   return (
     <div className="flex-1  p-2 pt-0! m-0 flex flex-col mt-2 h-full">
-      <div className="pb-2">
-        <SearchBar
-          searchQuery={searchQuery}
-          setSearchQuery={setSearchQuery}
-          onSearch={handleSearch}
-          loading={loading}
-          similarImageId={similarImageId}
-          setSimilarImageId={(id) => {
-            setSimilarImageId(id);
-            if (!id) {
-              scrollRef.current?.scrollTo({ top: 0 });
-            }
-          }}
-          mode={mode}
-          selectedLibrary={selectedLibrary}
-          setSelectedLibrary={setSelectedLibrary}
-          libraries={libraries}
-          viewMode={viewMode}
-          setViewMode={setViewMode}
-        />
+      <div className="pb-2 flex flex-col gap-2">
+        <div className="flex gap-2 items-start">
+          <div className="flex-1">
+            <SearchBar
+              searchQuery={searchQuery}
+              setSearchQuery={setSearchQuery}
+              onSearch={handleSearch}
+              loading={loading}
+              similarImageId={similarImageId}
+              setSimilarImageId={(id) => {
+                setSimilarImageId(id);
+                if (!id) {
+                  scrollRef.current?.scrollTo({ top: 0 });
+                }
+              }}
+              mode={mode}
+              selectedLibrary={selectedLibrary}
+              setSelectedLibrary={setSelectedLibrary}
+              libraries={libraries}
+              viewMode={viewMode}
+              setViewMode={setViewMode}
+            />
+          </div>
+          {setGridSize && (
+            <div
+              className="w-32 pt-2 flex items-center gap-2"
+              title="Grid Size"
+            >
+              <Grid3X3 className="w-4 h-4 text-muted-foreground" />
+              <Slider
+                value={[gridSize]}
+                min={1}
+                max={10}
+                step={1}
+                onValueChange={(vals) => setGridSize(vals[0])}
+                className="flex-1"
+              />
+            </div>
+          )}
+        </div>
       </div>
 
       {configLoaded ? (
@@ -145,6 +167,10 @@ export function ExploreTab({
               }}
               onSelect={(image) => {
                 if (!image) return;
+                if (onImageSelect) {
+                  onImageSelect(image);
+                  return;
+                }
                 const galleryImages = images.map((p) => ({
                   src: p.image_url,
                   title: p.prompt,

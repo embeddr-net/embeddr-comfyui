@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { cn } from "@embeddr/react-ui/lib/utils";
+import { cn } from "@embeddr/react-ui";
 import {
   Tabs,
   TabsContent,
