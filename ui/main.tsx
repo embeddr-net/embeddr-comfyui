@@ -5,9 +5,26 @@ import { ExternalNavProvider } from "@embeddr/react-ui";
 // @ts-ignore
 import { app } from "../../../scripts/app.js";
 import EmbeddrPanel from "./components/panels/EmbeddrPanel.js";
+import { GlobalDialog } from "./components/GlobalDialog";
 import "./nodes/EmbeddrLoadImage.js";
 // @ts-ignore
 import "./globals.css";
+
+// Mount Global Dialog
+const dialogContainer = document.createElement("div");
+dialogContainer.id = "embeddr-global-dialog-root";
+// Add tailwind class to ensure styles work if they rely on parent class
+dialogContainer.classList.add("tailwind");
+dialogContainer.classList.add("dark");
+document.body.appendChild(dialogContainer);
+const dialogRoot = ReactDOM.createRoot(dialogContainer);
+dialogRoot.render(
+  <React.StrictMode>
+    <ImageDialogProvider>
+      <GlobalDialog />
+    </ImageDialogProvider>
+  </React.StrictMode>
+);
 
 // Register Embeddr Sidebar
 app.extensionManager.registerSidebarTab({
@@ -16,6 +33,8 @@ app.extensionManager.registerSidebarTab({
   title: "Embeddr",
   type: "custom",
   render(container) {
+    document.documentElement.classList.add("dark", "tailwind");
+
     container.innerHTML = "";
     container.classList.add("tailwind");
     container.classList.add("embeddr-sidebar-container");

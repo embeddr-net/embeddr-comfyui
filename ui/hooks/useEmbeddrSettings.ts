@@ -18,11 +18,11 @@ export function useEmbeddrSettings({
   const [mode, setMode] = useState<ApiMode>(() => "local");
 
   const [gridSize, setGridSize] = useState(() =>
-    parseInt(localStorage.getItem("embeddr_grid_size") || "3"),
+    parseInt(localStorage.getItem("embeddr_grid_size") || "3")
   );
 
   const [gridPreviewContain, setGridPreviewContain] = useState(
-    () => localStorage.getItem("embeddr_grid_preview_contain") === "true",
+    () => localStorage.getItem("embeddr_grid_preview_contain") === "true"
   );
 
   const [theme, setTheme] = useState(() => {
@@ -49,7 +49,9 @@ export function useEmbeddrSettings({
     }
 
     // Also handle portals immediately
-    const portals = document.querySelectorAll("[data-radix-portal]");
+    const portals = document.querySelectorAll(
+      "[data-radix-portal], [data-slot='dialog-content'], [data-slot='dialog-overlay'], [data-slot='select-content'], [data-slot='select-viewport'], [data-slot='popover-content'], [data-slot='dropdown-menu-content']"
+    );
     portals.forEach((portal) => {
       if (theme === "dark") {
         portal.classList.add("dark");
@@ -82,7 +84,7 @@ export function useEmbeddrSettings({
           setGridPreviewContain(data.grid_preview_contain);
           localStorage.setItem(
             "embeddr_grid_preview_contain",
-            data.grid_preview_contain.toString(),
+            data.grid_preview_contain.toString()
           );
         }
       } catch (e) {
@@ -98,7 +100,7 @@ export function useEmbeddrSettings({
     newEndpoint: string,
     newMode: ApiMode,
     newGridSize: number,
-    newGridPreviewContain: boolean,
+    newGridPreviewContain: boolean
   ) => {
     try {
       localStorage.setItem("embeddr_endpoint", newEndpoint);
@@ -106,7 +108,7 @@ export function useEmbeddrSettings({
       localStorage.setItem("embeddr_grid_size", newGridSize.toString());
       localStorage.setItem(
         "embeddr_grid_preview_contain",
-        newGridPreviewContain.toString(),
+        newGridPreviewContain.toString()
       );
 
       const res = await fetch("/embeddr/config", {
