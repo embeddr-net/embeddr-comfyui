@@ -6,6 +6,11 @@ from comfy_api.latest import ComfyExtension, io
 
 from .nodes.EmbeddrUploadImage import EmbeddrSaveToFolderNode
 from .nodes.EmbeddrLoadImage import EmbeddrLoadImageNode
+from .nodes.EmbeddrLoadImages import EmbeddrLoadImagesNode
+from .nodes.EmbeddrMergeIDs import EmbeddrMergeIDsNode
+from .nodes.EmbeddrFindSimilar import EmbeddrFindSimilarNode
+from .nodes.EmbeddrFindSimilarText import EmbeddrFindSimilarTextNode
+from .nodes.EmbeddrUploadVideo import EmbeddrUploadVideo
 
 CONFIG_PATH = os.path.join(os.path.dirname(__file__), "config.json")
 
@@ -81,8 +86,13 @@ async def get_config(request):
 class EmbeddrComfyUIExtension(ComfyExtension):
     async def get_node_list(self) -> list[type[io.ComfyNode]]:
         return [
-            EmbeddrSaveToFolderNode,
+            EmbeddrFindSimilarNode,
+            EmbeddrFindSimilarTextNode,
             EmbeddrLoadImageNode,
+            EmbeddrLoadImagesNode,
+            EmbeddrMergeIDsNode,
+            EmbeddrSaveToFolderNode,
+            EmbeddrUploadVideo,
         ]
 
 
