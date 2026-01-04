@@ -18,6 +18,25 @@
 4. Run Embeddr-CLI with `embeddr serve`
 5. Run ComfyUI
 
+
+## Usage
+
+
+### Use New Load & Save Image
+
+![Example IO](.github/assets/io_nodes.png)
+
+![Example](.github/assets/example_2.png)
+
+### Retrieve from your collections
+
+![Example Retrieval](.github/assets/retrieval_nodes.png)
+
+
+### Access more info on the [WebUI](https://github.com/embeddr-net/embeddr-cli) 
+
+![Example Lineage](.github/assets/lineage_large.png)
+
 ## Development
 
 To get a development version working.
