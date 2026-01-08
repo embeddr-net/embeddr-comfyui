@@ -11,6 +11,8 @@ from .nodes.EmbeddrMergeIDs import EmbeddrMergeIDsNode
 from .nodes.EmbeddrFindSimilar import EmbeddrFindSimilarNode
 from .nodes.EmbeddrFindSimilarText import EmbeddrFindSimilarTextNode
 from .nodes.EmbeddrUploadVideo import EmbeddrUploadVideo
+from .nodes.EmbeddrLoadVideo import EmbeddrLoadVideoNode
+from .nodes.EmbeddrLoRAStack import EmbeddrLoRAStack
 
 CONFIG_PATH = os.path.join(os.path.dirname(__file__), "config.json")
 
@@ -93,6 +95,8 @@ class EmbeddrComfyUIExtension(ComfyExtension):
             EmbeddrMergeIDsNode,
             EmbeddrSaveToFolderNode,
             EmbeddrUploadVideo,
+            EmbeddrLoadVideoNode,
+            EmbeddrLoRAStack,
         ]
 
 

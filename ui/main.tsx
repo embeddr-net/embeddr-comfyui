@@ -8,6 +8,7 @@ import EmbeddrPanel from "./components/panels/EmbeddrPanel.js";
 import { GlobalDialog } from "./components/GlobalDialog";
 import "./nodes/EmbeddrLoadImage.js";
 import "./nodes/EmbeddrMergeIds.js";
+import "./nodes/EmbeddrLoRAStack.js";
 // @ts-ignore
 import "./globals.css";
 
