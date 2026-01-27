@@ -56,9 +56,11 @@ export function ImageGrid({
     };
   }, [hasMore, loading, onLoadMore]);
 
-  const handleDragStart = (e: React.DragEvent, imageUrl: string) => {
-    e.dataTransfer.setData("text/plain", imageUrl);
-    e.dataTransfer.setData("text/uri-list", imageUrl);
+  const handleDragStart = (e: React.DragEvent, image: any) => {
+    e.dataTransfer.setData("text/plain", image.image_url);
+    e.dataTransfer.setData("text/uri-list", image.image_url);
+    e.dataTransfer.setData("embeddr/id", image.id.toString());
+    e.dataTransfer.setData("embeddr/json", JSON.stringify(image));
   };
 
   return (
@@ -81,7 +83,7 @@ export function ImageGrid({
             }}
             onClick={() => onSelect?.(image)}
             draggable
-            onDragStart={(e) => handleDragStart(e, image.image_url)}
+            onDragStart={(e) => handleDragStart(e, image)}
           >
             <img
               src={`${image.thumb_url || image.image_url}`}

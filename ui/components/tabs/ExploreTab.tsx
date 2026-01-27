@@ -11,11 +11,13 @@ import { ImageGrid } from "@components/ui/ImageGrid";
 import { useNodeScanner } from "@hooks/useNodeScanner";
 import { ImageDetails } from "../panels/ImageDetails";
 import { SearchBar } from "../ui/SearchBar";
+import { useEmbeddrCollections } from "../../hooks/useEmbeddrCollections";
 import type {
   ApiMode,
   LibraryPath,
   PromptImageRead,
 } from "@hooks/useEmbeddrApi";
+import type { EmbeddrApiClient } from "@embeddr/api";
 
 interface ExploreTabProps {
   images: Array<PromptImageRead>;
@@ -26,12 +28,15 @@ interface ExploreTabProps {
     query?: string,
     viewMode?: "all" | "mine",
     libId?: number | null,
-    similarId?: number | null
+    similarId?: string | number | null,
+    collectionId?: string | null,
   ) => Promise<void>;
   libraries: Array<LibraryPath>;
   similarImageId: number | null;
   setSimilarImageId: (id: number | null) => void;
   mode: ApiMode;
+  apiBase?: string; // Need apiBase for collections
+  apiClient?: EmbeddrApiClient;
   gridSize: number;
   setGridSize?: (size: number) => void;
   gridPreviewContain: boolean;
@@ -49,6 +54,8 @@ export function ExploreTab({
   similarImageId,
   setSimilarImageId,
   mode,
+  apiBase = "",
+  apiClient,
   gridSize,
   setGridSize,
   gridPreviewContain,
@@ -60,20 +67,35 @@ export function ExploreTab({
   const { openImage, closeImage, setGalleryImages, currentGallery } =
     useImageDialog();
 
+  const { collections, fetchCollections } = useEmbeddrCollections({
+    apiBase,
+    configLoaded,
+    apiClient,
+  });
+
+  // Load collections on mount/config load
+  useEffect(() => {
+    if (configLoaded) {
+      fetchCollections();
+    }
+  }, [configLoaded, fetchCollections]);
+
   const [searchQuery, setSearchQuery] = useState("");
   const [viewMode, setViewMode] = useState<"all" | "mine">("all");
-  const [selectedLibrary, setSelectedLibrary] = useState<string>("all");
+  const [selectedCollectionId, setSelectedCollectionId] =
+    useState<string>("all");
   const [selectedImage, setSelectedImage] = useState<PromptImageRead | null>(
-    null
+    null,
   );
   const scrollRef = useRef<HTMLDivElement>(null);
 
   // Fetch when dependencies change
   useEffect(() => {
     if (!configLoaded) return;
-    const libId = selectedLibrary === "all" ? null : parseInt(selectedLibrary);
-    fetchImages(true, searchQuery, viewMode, libId, similarImageId);
-  }, [viewMode, configLoaded, selectedLibrary, mode, similarImageId]); // Re-fetch when view mode changes or config is loaded
+    const colId = selectedCollectionId === "all" ? null : selectedCollectionId;
+    // libraryId is null now as we use collections
+    fetchImages(true, searchQuery, viewMode, null, similarImageId, colId);
+  }, [viewMode, configLoaded, selectedCollectionId, mode, similarImageId]); // Re-fetch when view mode changes or config is loaded
 
   // Sync images to lightbox when they change
   useEffect(() => {
@@ -90,8 +112,8 @@ export function ExploreTab({
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
-    const libId = selectedLibrary === "all" ? null : parseInt(selectedLibrary);
-    fetchImages(true, searchQuery, viewMode, libId, similarImageId);
+    const colId = selectedCollectionId === "all" ? null : selectedCollectionId;
+    fetchImages(true, searchQuery, viewMode, null, similarImageId, colId);
   };
 
   return (
@@ -112,9 +134,9 @@ export function ExploreTab({
                 }
               }}
               mode={mode}
-              selectedLibrary={selectedLibrary}
-              setSelectedLibrary={setSelectedLibrary}
-              libraries={libraries}
+              selectedCollectionId={selectedCollectionId}
+              setSelectedCollectionId={setSelectedCollectionId}
+              collections={collections}
               viewMode={viewMode}
               setViewMode={setViewMode}
             />
@@ -152,18 +174,19 @@ export function ExploreTab({
                 setSelectedImage(e);
               }}
               onLoadMore={() => {
-                const libId =
-                  selectedLibrary === "all" ? null : parseInt(selectedLibrary);
+                const colId =
+                  selectedCollectionId === "all" ? null : selectedCollectionId;
                 fetchImages(
                   false,
                   searchQuery,
                   viewMode,
-                  libId,
-                  similarImageId
+                  null,
+                  similarImageId,
+                  colId,
                 );
               }}
               onSimilarSearch={(image) => {
-                setSimilarImageId(image);
+                setSimilarImageId(image.id); // Assuming image.id is number/string
               }}
               onSelect={(image) => {
                 if (!image) return;
@@ -191,16 +214,17 @@ export function ExploreTab({
                     totalImages: totalImages,
                     fetchMore: async (_dir: any, _offset: any) => {
                       if (hasMore) {
-                        const libId =
-                          selectedLibrary === "all"
+                        const colId =
+                          selectedCollectionId === "all"
                             ? null
-                            : parseInt(selectedLibrary);
+                            : selectedCollectionId;
                         await fetchImages(
                           false,
                           searchQuery,
                           viewMode,
-                          libId,
-                          similarImageId
+                          null,
+                          similarImageId,
+                          colId,
                         );
                       }
                     },
@@ -224,7 +248,7 @@ export function ExploreTab({
                       },
                     },
                   ],
-                  image.prompt
+                  image.prompt,
                 );
               }}
               selectedId={selectedImage?.id}
@@ -243,6 +267,8 @@ export function ExploreTab({
                   targetNodes={targetNodes}
                   onUseImage={handleUseImage}
                   onLoadIntoNode={handleLoadIntoNode}
+                  apiBase={apiBase}
+                  apiClient={apiClient}
                 />
               </ResizablePanel>
             </>

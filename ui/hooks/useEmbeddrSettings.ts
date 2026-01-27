@@ -34,7 +34,7 @@ export function useEmbeddrSettings({
   // computed API base for requests
   const apiBase = useMemo(() => {
     const url = endpoint.replace(/\/$/, ""); // remove trailing slash
-    return `${url}/api/v1`; // append API path automatically
+    return `${url}/api/v2`; // append API path automatically
   }, [endpoint]);
 
   // Apply theme

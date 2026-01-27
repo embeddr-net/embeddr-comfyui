@@ -11,6 +11,7 @@ import {
 } from "@embeddr/react-ui/components/select";
 import { Globe, ScanEyeIcon, Search, User } from "lucide-react";
 import type { ApiMode, LibraryPath } from "@types";
+import type { Collection } from "../../hooks/useEmbeddrCollections";
 
 interface SearchBarProps {
   searchQuery: string;
@@ -20,9 +21,9 @@ interface SearchBarProps {
   similarImageId: number | null;
   setSimilarImageId: (id: number | null) => void;
   mode: ApiMode;
-  selectedLibrary: string;
-  setSelectedLibrary: (lib: string) => void;
-  libraries: Array<LibraryPath>;
+  selectedCollectionId: string;
+  setSelectedCollectionId: (id: string) => void;
+  collections: Array<Collection>;
   viewMode: "all" | "mine";
   setViewMode: (mode: "all" | "mine") => void;
 }
@@ -35,9 +36,9 @@ export function SearchBar({
   similarImageId,
   setSimilarImageId,
   mode,
-  selectedLibrary,
-  setSelectedLibrary,
-  libraries,
+  selectedCollectionId,
+  setSelectedCollectionId,
+  collections,
   viewMode,
   setViewMode,
 }: SearchBarProps) {
@@ -75,15 +76,18 @@ export function SearchBar({
 
       <div className="flex gap-1">
         {mode === "local" ? (
-          <Select value={selectedLibrary} onValueChange={setSelectedLibrary}>
+          <Select
+            value={selectedCollectionId}
+            onValueChange={setSelectedCollectionId}
+          >
             <SelectTrigger className="h-8 w-full">
-              <SelectValue placeholder="Select library" />
+              <SelectValue placeholder="Select collection" />
             </SelectTrigger>
             <SelectContent side="top" position="popper">
-              <SelectItem value="all">All Libraries</SelectItem>
-              {libraries.map((lib) => (
-                <SelectItem key={lib.id} value={lib.id.toString()}>
-                  {lib.name || lib.path}
+              <SelectItem value="all">All Collections</SelectItem>
+              {collections.map((col) => (
+                <SelectItem key={col.id} value={col.id}>
+                  {col.label || "Untitled"} ({col.file_count || 0})
                 </SelectItem>
               ))}
             </SelectContent>

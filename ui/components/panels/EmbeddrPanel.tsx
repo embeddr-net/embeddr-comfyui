@@ -34,6 +34,7 @@ export default function EmbeddrPanel() {
     setSimilarImageId,
     theme,
     setTheme,
+    apiClient,
   } = useEmbeddrApi();
 
   const { openExternal } = useExternalNav();
@@ -88,7 +89,7 @@ export default function EmbeddrPanel() {
               size="icon"
               className={cn(
                 "ml-auto",
-                activeTab === "settings" ? "bg-primary/50" : ""
+                activeTab === "settings" ? "bg-primary/50" : "",
               )}
               onClick={() => setActiveTab("settings")}
             >
@@ -115,6 +116,8 @@ export default function EmbeddrPanel() {
             similarImageId={similarImageId}
             setSimilarImageId={setSimilarImageId}
             mode={mode}
+            apiBase={endpoint}
+            apiClient={apiClient}
             gridSize={gridSize}
             gridPreviewContain={gridPreviewContain}
             configLoaded={configLoaded}

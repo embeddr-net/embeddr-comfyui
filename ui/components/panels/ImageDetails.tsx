@@ -1,7 +1,22 @@
-import React, { useState } from "react";
+import React, { useMemo, useState, useEffect } from "react";
 import { Button } from "@embeddr/react-ui/components/button";
 import { ScrollArea } from "@embeddr/react-ui/components/scroll-area";
-import { ArrowBigRightDashIcon, Check, Copy, Plus } from "lucide-react";
+import { Badge } from "@embeddr/react-ui/components/badge";
+import { Separator } from "@embeddr/react-ui/components/separator";
+import { Skeleton } from "@embeddr/react-ui/components/skeleton";
+import { EmbeddrApiClient } from "@embeddr/api";
+
+import {
+  ArrowBigRightDashIcon,
+  Check,
+  Copy,
+  Plus,
+  Tag,
+  Folder,
+  Hash,
+  Info,
+  FileText,
+} from "lucide-react";
 import type { PromptImageRead } from "@hooks/useEmbeddrApi";
 import type { TargetNode } from "@hooks/useNodeScanner";
 
@@ -10,6 +25,17 @@ interface ImageDetailsProps {
   targetNodes: Array<TargetNode>;
   onLoadIntoNode: (nodeId: number, imageUrl: string) => void;
   onUseImage: (imageUrl: string) => void;
+  apiBase?: string;
+  apiClient?: EmbeddrApiClient;
+}
+
+interface ArtifactDetail {
+  id: string;
+  type_name: string;
+  uri: string;
+  metadata_json: Record<string, any>;
+  collections: Array<{ id: string; name: string }>;
+  tags: Array<{ id: string; name: string }>;
 }
 
 export function ImageDetails({
@@ -17,8 +43,57 @@ export function ImageDetails({
   targetNodes,
   onLoadIntoNode,
   onUseImage,
+  apiBase,
+  apiClient,
 }: ImageDetailsProps) {
   const [copied, setCopied] = useState(false);
+  const [artifact, setArtifact] = useState<ArtifactDetail | null>(null);
+  const [loading, setLoading] = useState(false);
+
+  const localClient = useMemo(() => {
+    if (apiClient) return apiClient;
+    if (!apiBase) return null;
+    let baseUrl = apiBase;
+    if (baseUrl.endsWith("/")) baseUrl = baseUrl.slice(0, -1);
+    if (!baseUrl.endsWith("/api/v2")) {
+      baseUrl = `${baseUrl}/api/v2`;
+    }
+    return new EmbeddrApiClient({ baseUrl });
+  }, [apiClient, apiBase]);
+
+  useEffect(() => {
+    if (!selectedImage?.id) {
+      setArtifact(null);
+      return;
+    }
+
+    setLoading(true);
+    const client = localClient;
+    const fallback = apiBase
+      ? apiBase.replace(/\/+$/, "").replace(/\/+api\/v2$/, "") + "/api/v2"
+      : "";
+
+    if (client) {
+      client.artifacts
+        .get(selectedImage.id)
+        .then((data) => setArtifact(data as ArtifactDetail))
+        .catch((e) => console.error("Failed to fetch artifact details", e))
+        .finally(() => setLoading(false));
+      return;
+    }
+
+    if (!fallback) {
+      setArtifact(null);
+      setLoading(false);
+      return;
+    }
+
+    fetch(`${fallback}/artifacts/${selectedImage.id}`)
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => setArtifact(data))
+      .catch((e) => console.error("Failed to fetch artifact details", e))
+      .finally(() => setLoading(false));
+  }, [selectedImage.id, apiBase, localClient]);
 
   const handleCopyPrompt = () => {
     if (selectedImage?.prompt) {
@@ -90,11 +165,100 @@ export function ImageDetails({
             </div>
           </div>
 
-          {selectedImage.prompt && (
-            <div className="text-xs text-muted-foreground bg-background border p-2 whitespace-pre-wrap">
-              {selectedImage.prompt}
-            </div>
-          )}
+          <div className="flex flex-col gap-4 p-1 mt-2">
+            {selectedImage.prompt && (
+              <div className="flex flex-col gap-1">
+                <div className="flex items-center gap-2 text-xs font-semibold text-muted-foreground">
+                  <FileText className="w-3 h-3" /> Prompt
+                </div>
+                <div className="text-xs text-muted-foreground bg-background border p-2 rounded-md whitespace-pre-wrap font-mono max-h-48 overflow-y-auto">
+                  {selectedImage.prompt}
+                </div>
+              </div>
+            )}
+
+            {loading && (
+              <div className="flex flex-col gap-2">
+                <Skeleton className="h-4 w-3/4 bg-muted" />
+                <Skeleton className="h-4 w-1/2 bg-muted" />
+              </div>
+            )}
+
+            {!loading && artifact && (
+              <>
+                <Separator />
+                {/* Tech Specs */}
+                <div className="grid grid-cols-2 gap-4 text-xs">
+                  <div className="flex flex-col gap-0.5">
+                    <span className="text-muted-foreground font-medium">
+                      Dimensions
+                    </span>
+                    <span>
+                      {artifact.metadata_json?.width || selectedImage.width} x{" "}
+                      {artifact.metadata_json?.height || selectedImage.height}
+                    </span>
+                  </div>
+                  <div className="flex flex-col gap-0.5">
+                    <span className="text-muted-foreground font-medium">
+                      Type
+                    </span>
+                    <span className="uppercase">
+                      {artifact.metadata_json?.format || artifact.type_name}
+                    </span>
+                  </div>
+                  {/* File Path (usually useful for debugging or local) */}
+                </div>
+
+                {/* Collections */}
+                {artifact.collections && artifact.collections.length > 0 && (
+                  <div className="flex flex-col gap-2">
+                    <div className="flex items-center gap-2 text-xs font-semibold text-muted-foreground">
+                      <Folder className="w-3 h-3" /> Collections
+                    </div>
+                    <div className="flex flex-wrap gap-1">
+                      {artifact.collections.map((c) => (
+                        <Badge
+                          key={c.id}
+                          variant="outline"
+                          className="text-[10px] px-2 py-0.5 h-auto font-normal"
+                        >
+                          {c.name}
+                        </Badge>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Tags */}
+                {((artifact.tags && artifact.tags.length > 0) ||
+                  (artifact.metadata_json?.tags &&
+                    Array.isArray(artifact.metadata_json.tags))) && (
+                  <div className="flex flex-col gap-2">
+                    <div className="flex items-center gap-2 text-xs font-semibold text-muted-foreground">
+                      <Tag className="w-3 h-3" /> Tags
+                    </div>
+                    <div className="flex flex-wrap gap-1">
+                      {/* Prefer relational tags, fallback to metadata tags */}
+                      {(artifact.tags?.length > 0
+                        ? artifact.tags
+                        : (artifact.metadata_json.tags as string[]).map(
+                            (t) => ({ id: t, name: t }),
+                          )
+                      ).map((t) => (
+                        <Badge
+                          key={t.id}
+                          variant="secondary"
+                          className="text-[10px] px-2 py-0.5 h-auto font-normal"
+                        >
+                          #{t.name}
+                        </Badge>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </>
+            )}
+          </div>
         </div>
       </ScrollArea>
     </div>

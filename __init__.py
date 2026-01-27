@@ -4,15 +4,16 @@ from aiohttp import web
 from server import PromptServer
 from comfy_api.latest import ComfyExtension, io
 
-from .nodes.EmbeddrUploadImage import EmbeddrSaveToFolderNode
-from .nodes.EmbeddrLoadImage import EmbeddrLoadImageNode
-from .nodes.EmbeddrLoadImages import EmbeddrLoadImagesNode
+from .nodes.EmbeddrUploadArtifact import EmbeddrUploadArtifactNode
+from .nodes.EmbeddrLoadArtifact import EmbeddrLoadArtifactNode
+from .nodes.EmbeddrLoadArtifacts import EmbeddrLoadArtifactsNode
 from .nodes.EmbeddrMergeIDs import EmbeddrMergeIDsNode
-from .nodes.EmbeddrFindSimilar import EmbeddrFindSimilarNode
+from .nodes.EmbeddrFindSimilarArtifacts import EmbeddrFindSimilarArtifactsNode
 from .nodes.EmbeddrFindSimilarText import EmbeddrFindSimilarTextNode
 from .nodes.EmbeddrUploadVideo import EmbeddrUploadVideo
 from .nodes.EmbeddrLoadVideo import EmbeddrLoadVideoNode
 from .nodes.EmbeddrLoRAStack import EmbeddrLoRAStack
+from .nodes.EmbeddrFindCollection import EmbeddrFindCollectionNode
 
 CONFIG_PATH = os.path.join(os.path.dirname(__file__), "config.json")
 
@@ -88,15 +89,16 @@ async def get_config(request):
 class EmbeddrComfyUIExtension(ComfyExtension):
     async def get_node_list(self) -> list[type[io.ComfyNode]]:
         return [
-            EmbeddrFindSimilarNode,
+            EmbeddrFindSimilarArtifactsNode,
             EmbeddrFindSimilarTextNode,
-            EmbeddrLoadImageNode,
-            EmbeddrLoadImagesNode,
+            EmbeddrLoadArtifactNode,
+            EmbeddrLoadArtifactsNode,
             EmbeddrMergeIDsNode,
-            EmbeddrSaveToFolderNode,
+            EmbeddrUploadArtifactNode,
             EmbeddrUploadVideo,
             EmbeddrLoadVideoNode,
             EmbeddrLoRAStack,
+            EmbeddrFindCollectionNode,
         ]
 
 

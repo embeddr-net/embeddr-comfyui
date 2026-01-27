@@ -6,7 +6,7 @@ import requests
 import tempfile
 from comfy_api.latest import io, ui
 from comfy_api.latest._io import ComfyNode
-from .utils import get_config
+from .utils import get_embeddr_base_url
 
 
 class EmbeddrUploadVideo(io.ComfyNode):
@@ -52,9 +52,8 @@ class EmbeddrUploadVideo(io.ComfyNode):
     @classmethod
     def execute(cls, video, caption=None, parent_ids=None, library="Default", collection="None", tags="", format="mp4", codec="h264", allow_duplicates=False, save_backup=False, **kwargs):
         uploaded_ids = []
-        config = get_config()
-        endpoint = config.get("endpoint", "http://localhost:8003")
-        api_base_url = endpoint.rstrip("/") + "/api/v1"
+        base_url = get_embeddr_base_url()
+        api_base_url = f"{base_url}/api/v1"
         upload_url = f"{api_base_url}/images/upload"
 
         try:

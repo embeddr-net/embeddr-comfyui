@@ -1,12 +1,11 @@
 import requests
-from .config import get_config
+from .config import get_embeddr_base_url
 
 
 def get_libraries():
     try:
-        config = get_config()
-        endpoint = config.get("endpoint", "http://localhost:8003")
-        api_url = endpoint.rstrip("/") + "/api/v1/libraries"
+        base_url = get_embeddr_base_url()
+        api_url = f"{base_url}/api/v1/libraries"
         response = requests.get(api_url)
         if response.status_code == 200:
             data = response.json()
@@ -22,9 +21,8 @@ def get_libraries():
 
 def get_collections():
     try:
-        config = get_config()
-        endpoint = config.get("endpoint", "http://localhost:8003")
-        api_url = endpoint.rstrip("/") + "/api/v1/collections"
+        base_url = get_embeddr_base_url()
+        api_url = f"{base_url}/api/v1/collections"
         response = requests.get(api_url)
         if response.status_code == 200:
             data = response.json()
