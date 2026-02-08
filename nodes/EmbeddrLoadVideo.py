@@ -7,6 +7,7 @@ import os
 import shutil
 from comfy_api.latest import io, ui
 from .utils import get_config
+from .utils.config import get_auth_headers
 
 
 class EmbeddrLoadVideoNode(io.ComfyNode):
@@ -70,7 +71,7 @@ class EmbeddrLoadVideoNode(io.ComfyNode):
             # In production, we should cache the file path if it's the same ID.
 
             # Stream download
-            with requests.get(api_url, stream=True) as r:
+            with requests.get(api_url, stream=True, headers=get_auth_headers()) as r:
                 r.raise_for_status()
                 # Determine extension
                 content_type = r.headers.get('content-type', '')

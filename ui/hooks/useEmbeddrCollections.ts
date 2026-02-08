@@ -14,12 +14,14 @@ interface UseEmbeddrCollectionsProps {
   apiBase: string;
   configLoaded: boolean;
   apiClient?: EmbeddrApiClient;
+  apiKey?: string;
 }
 
 export function useEmbeddrCollections({
   apiBase,
   configLoaded,
   apiClient,
+  apiKey,
 }: UseEmbeddrCollectionsProps) {
   const [collections, setCollections] = useState<Collection[]>([]);
   const [loadingCollections, setLoadingCollections] = useState(false);
@@ -32,18 +34,30 @@ export function useEmbeddrCollections({
       const headers: Record<string, string> = {
         "Content-Type": "application/json",
       };
+      if (apiKey) {
+        headers["X-API-Key"] = apiKey;
+      }
 
       let baseUrl = apiBase;
       if (baseUrl.endsWith("/")) baseUrl = baseUrl.slice(0, -1);
       // Ensure we target the V2 API
-      if (!baseUrl.endsWith("/api/v2")) {
-        baseUrl = `${baseUrl}/api/v2`;
+      if (!baseUrl.endsWith("/api/v1")) {
+        baseUrl = `${baseUrl}/api/v1`;
       }
 
-      const res = await fetch(`${baseUrl}/collections`, {
-        method: "GET",
-        headers,
-      });
+      const url = `${baseUrl}/collections`;
+      let res: Response;
+
+      // Use Proxy
+      if (url.startsWith("http")) {
+        res = await fetch(`/embeddr/proxy?url=${encodeURIComponent(url)}`, {
+          method: "GET",
+          headers,
+        });
+      } else {
+        res = await fetch(url, { method: "GET", headers });
+      }
+
       if (res.ok) {
         const data = await res.json();
         // data could be paginated or just a list
@@ -58,7 +72,7 @@ export function useEmbeddrCollections({
     } finally {
       setLoadingCollections(false);
     }
-  }, [apiBase, configLoaded]);
+  }, [apiBase, configLoaded, apiKey]);
 
   const [creating, setCreating] = useState(false);
 
@@ -70,6 +84,10 @@ export function useEmbeddrCollections({
         const headers: Record<string, string> = {
           "Content-Type": "application/json",
         };
+        if (apiKey) {
+          headers["X-API-Key"] = apiKey;
+        }
+
         const payload = {
           label: label,
           type_name: "collection:mix", // Default to simple mix
@@ -80,15 +98,15 @@ export function useEmbeddrCollections({
 
         let baseUrl = apiBase;
         if (baseUrl.endsWith("/")) baseUrl = baseUrl.slice(0, -1);
-        if (!baseUrl.endsWith("/api/v2")) {
-          baseUrl = `${baseUrl}/api/v2`;
+        if (!baseUrl.endsWith("/api/v1")) {
+          baseUrl = `${baseUrl}/api/v1`;
         }
 
         // Use the artifact endpoint to create a collection, since /collections might be read-only or alias
-        // But if /api/v2/collections exists as a dedicated endpoint, we use it.
-        // Assuming /api/v2/collections POST works as expected for creating collections specificically.
+        // But if /api/v1/collections exists as a dedicated endpoint, we use it.
+        // Assuming /api/v1/collections POST works as expected for creating collections specificically.
         // If not, we might need to POST to /artifacts with type=collection.
-        // Let's stick to the user's requested endpoint /api/v2/collections for now.
+        // Let's stick to the user's requested endpoint /api/v1/collections for now.
         const res = await fetch(`${baseUrl}/collections`, {
           method: "POST",
           headers,
@@ -109,7 +127,7 @@ export function useEmbeddrCollections({
         setCreating(false);
       }
     },
-    [apiBase, configLoaded, fetchCollections],
+    [apiBase, configLoaded, fetchCollections, apiKey],
   );
 
   return {

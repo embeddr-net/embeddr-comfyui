@@ -10,6 +10,7 @@ import random
 from comfy_api.latest import io, ui
 from .utils import get_config
 from .utils.api import get_collections, get_libraries
+from .utils.config import get_auth_headers
 
 
 class EmbeddrLoadImagesNode(io.ComfyNode):
@@ -32,10 +33,10 @@ class EmbeddrLoadImagesNode(io.ComfyNode):
 
     @classmethod
     def _resolve_artifact_url(cls, base_url: str, artifact_id: str):
-        resolve_url = f"{base_url}/api/v2/artifacts/{artifact_id}/resolve?variant=original&proxy=1"
+        resolve_url = f"{base_url}/api/v1/artifacts/{artifact_id}/resolve?variant=original&proxy=1"
         cls._debug("resolving_artifact", artifact_id=artifact_id,
                    resolve_url=resolve_url)
-        res = requests.get(resolve_url)
+        res = requests.get(resolve_url, headers=get_auth_headers())
         res.raise_for_status()
         data = res.json()
         url = data.get("url")
@@ -43,13 +44,13 @@ class EmbeddrLoadImagesNode(io.ComfyNode):
         if url and url.startswith("/"):
             url = urljoin(base_url, url)
 
-        if url and "/api/v2/artifacts/" in url and "/content" in url and "proxy=" not in url:
+        if url and "/api/v1/artifacts/" in url and "/content" in url and "proxy=" not in url:
             url = f"{url}?proxy=1"
 
         base_netloc = urlparse(base_url).netloc
         url_netloc = urlparse(url).netloc if url else ""
         if url and base_netloc and url_netloc and url_netloc != base_netloc:
-            proxy_url = f"{base_url}/api/v2/artifacts/{artifact_id}/content?proxy=1"
+            proxy_url = f"{base_url}/api/v1/artifacts/{artifact_id}/content?proxy=1"
             cls._debug(
                 "forcing_proxy_url",
                 artifact_id=artifact_id,
@@ -105,7 +106,7 @@ class EmbeddrLoadImagesNode(io.ComfyNode):
             base_url = base_url.rstrip("/")
 
             # V2 API: List Artifacts
-            api_url = f"{base_url}/api/v2/artifacts/"
+            api_url = f"{base_url}/api/v1/artifacts/"
 
             params = {
                 "limit": limit,
@@ -137,7 +138,8 @@ class EmbeddrLoadImagesNode(io.ComfyNode):
             else:
                 params["sort"] = "new"
 
-            response = requests.get(api_url, params=params)
+            response = requests.get(
+                api_url, params=params, headers=get_auth_headers())
             response.raise_for_status()
             data = response.json()
             items = data.get("items", [])
@@ -166,8 +168,12 @@ class EmbeddrLoadImagesNode(io.ComfyNode):
                 )
 
                 try:
+                    final_headers = get_auth_headers()
+                    if content_headers:
+                        final_headers.update(content_headers)
+
                     img_resp = requests.get(
-                        content_url, headers=content_headers)
+                        content_url, headers=final_headers)
                     img_resp.raise_for_status()
                     cls._debug(
                         "artifact_content_response",

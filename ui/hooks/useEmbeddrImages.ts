@@ -9,6 +9,7 @@ interface UseEmbeddrImagesProps {
   mode: ApiMode;
   configLoaded: boolean;
   apiClient?: EmbeddrApiClient;
+  apiKey?: string;
 }
 
 export function useEmbeddrImages({
@@ -16,6 +17,7 @@ export function useEmbeddrImages({
   mode,
   configLoaded,
   apiClient,
+  apiKey,
 }: UseEmbeddrImagesProps) {
   const [images, setImages] = useState<Array<PromptImageRead>>([]);
   const [loading, setLoading] = useState(false);
@@ -25,6 +27,8 @@ export function useEmbeddrImages({
   const [similarImageId, setSimilarImageId] = useState<string | number | null>(
     null,
   );
+  const failureCountRef = useRef(0);
+  const nextAllowedFetchRef = useRef(0);
 
   const fetchImages = useCallback(
     async (
@@ -36,6 +40,11 @@ export function useEmbeddrImages({
       collectionId?: string | null,
     ) => {
       if (!configLoaded) return;
+      const now = Date.now();
+      if (!reset && now < nextAllowedFetchRef.current) {
+        return;
+      }
+      // If we are loading more pages (not reset) and already loading, skip
       if (loadingRef.current && !reset) return;
 
       loadingRef.current = true;
@@ -44,9 +53,10 @@ export function useEmbeddrImages({
         const headers: Record<string, string> = {
           "Content-Type": "application/json",
         };
-        const storedKey = localStorage.getItem("embeddr_api_key");
-        if (storedKey) {
-          headers["Authorization"] = `Bearer ${storedKey}`;
+        // Use prop apiKey first, then fallback to localStorage if needed (though prop should be source of truth)
+        const currentKey = apiKey || localStorage.getItem("embeddr_api_key");
+        if (currentKey) {
+          headers["X-API-Key"] = currentKey;
         }
 
         const currentPage = reset ? 1 : pageRef.current;
@@ -55,8 +65,8 @@ export function useEmbeddrImages({
         let baseUrl = apiBase;
         if (baseUrl.endsWith("/")) baseUrl = baseUrl.slice(0, -1);
         // Ensure V2
-        if (!baseUrl.endsWith("/api/v2")) {
-          baseUrl = `${baseUrl}/api/v2`;
+        if (!baseUrl.endsWith("/api/v1")) {
+          baseUrl = `${baseUrl}/api/v1`;
         }
 
         const currentSimilarId =
@@ -84,6 +94,7 @@ export function useEmbeddrImages({
             limit: 20,
           });
         } else if (apiClient) {
+          // Use apiClient for listing items, which now uses proxyFetch internally through constructor
           const list = await apiClient.artifacts.list({
             limit: 20,
             offset,
@@ -93,15 +104,29 @@ export function useEmbeddrImages({
             collection_id: collectionId || undefined,
           });
 
+          // Helper to ensure urls are proxied even if returned from client helpers
+          // The client's getContentUrl returns raw url, we must wrap it if display is needed
+          const proxify = (u: string) =>
+            u.startsWith("http")
+              ? `/embeddr/proxy?url=${encodeURIComponent(u)}`
+              : u;
+
           const items = list.items || [];
           const mapped = items.map((item: any) => {
             const id = item.id;
             const metadata = item.metadata_json || {};
+
+            const rawImageUrl = apiClient.artifacts.getContentUrl(id);
+            const rawThumbUrl = apiClient.artifacts.getPreviewUrl(
+              id,
+              "thumbnail",
+            );
+
             return {
               id: id,
               prompt: metadata.prompt || metadata.filename || "Untitled",
-              image_url: apiClient.artifacts.getContentUrl(id),
-              thumb_url: apiClient.artifacts.getPreviewUrl(id, "thumbnail"),
+              image_url: proxify(rawImageUrl),
+              thumb_url: proxify(rawThumbUrl),
               created_at: item.created_at || new Date().toISOString(),
               like_count: 0,
               liked_by_me: false,
@@ -121,7 +146,7 @@ export function useEmbeddrImages({
           setHasMore(offset + mapped.length < list.total);
           return;
         } else {
-          // List Artifacts
+          // List Artifacts (No Client Fallback - Should rarely happen if hook setup correct)
           url = `${baseUrl}/artifacts/?type_name=image&sort=new&limit=20&offset=${offset}`;
           if (libraryId) {
             url += `&library_id=${libraryId}`;
@@ -131,7 +156,17 @@ export function useEmbeddrImages({
           }
         }
 
-        let response = await fetch(url, { method, headers, body });
+        let response: Response;
+
+        // Use Proxy for all requests to avoid CORS/Auth issues in ComfyUI environment
+        // The backend proxy injects the API key from server-side config
+        const isComfyEnv = true; // We are in ComfyUI extension
+        if (isComfyEnv && url.startsWith("http")) {
+          const proxyUrl = `/embeddr/proxy?url=${encodeURIComponent(url)}`;
+          response = await fetch(proxyUrl, { method, headers, body });
+        } else {
+          response = await fetch(url, { method, headers, body });
+        }
 
         // Fallback for Similar Search if plugin missing (404)
         if (!response.ok && currentSimilarId && response.status === 404) {
@@ -171,18 +206,25 @@ export function useEmbeddrImages({
               const isFullArtifact = !!item.uri;
               const metadata = item.metadata_json || {};
 
+              const rawImageUrl = apiClient
+                ? apiClient.artifacts.getContentUrl(id)
+                : `${baseUrl}/artifacts/${id}/content`;
+              const rawThumbUrl = apiClient
+                ? apiClient.artifacts.getPreviewUrl(id, "thumbnail")
+                : `${baseUrl}/artifacts/${id}/preview?preview_type=thumbnail`;
+
               return {
                 id: id,
                 prompt:
                   metadata.prompt ||
                   metadata.filename ||
                   (isFullArtifact ? "Untitled" : "Similar Result"),
-                image_url: apiClient
-                  ? apiClient.artifacts.getContentUrl(id)
-                  : `${baseUrl}/artifacts/${id}/content`,
-                thumb_url: apiClient
-                  ? apiClient.artifacts.getPreviewUrl(id, "thumbnail")
-                  : `${baseUrl}/artifacts/${id}/preview?preview_type=thumbnail`,
+                image_url: rawImageUrl.startsWith("http")
+                  ? `/embeddr/proxy?url=${encodeURIComponent(rawImageUrl)}`
+                  : rawImageUrl,
+                thumb_url: rawThumbUrl.startsWith("http")
+                  ? `/embeddr/proxy?url=${encodeURIComponent(rawThumbUrl)}`
+                  : rawThumbUrl,
                 created_at: item.created_at || new Date().toISOString(),
                 like_count: 0,
                 liked_by_me: false,
@@ -211,11 +253,19 @@ export function useEmbeddrImages({
             setImages((prev) => [...prev, ...items]);
             pageRef.current = currentPage + 1;
           }
+          failureCountRef.current = 0;
+          nextAllowedFetchRef.current = 0;
         } else {
           throw new Error(`Failed to fetch images: ${response.status}`);
         }
       } catch (error) {
         console.error("Error fetching images:", error);
+        failureCountRef.current += 1;
+        const backoffMs = Math.min(
+          60000,
+          2000 * 2 ** (failureCountRef.current - 1),
+        );
+        nextAllowedFetchRef.current = Date.now() + backoffMs;
         if (app.extensionManager?.toast) {
           app.extensionManager.toast.add({
             severity: "error",
@@ -230,7 +280,7 @@ export function useEmbeddrImages({
         setLoading(false);
       }
     },
-    [apiBase, configLoaded, mode, similarImageId],
+    [apiBase, configLoaded, mode, similarImageId, apiKey],
   );
 
   return {

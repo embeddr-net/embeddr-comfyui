@@ -5,12 +5,14 @@ interface UseEmbeddrLibrariesProps {
   apiBase: string;
   mode: ApiMode;
   configLoaded: boolean;
+  apiKey?: string;
 }
 
 export function useEmbeddrLibraries({
   apiBase,
   mode,
   configLoaded,
+  apiKey,
 }: UseEmbeddrLibrariesProps) {
   const [libraries, setLibraries] = useState<Array<LibraryPath>>([]);
 
@@ -19,7 +21,25 @@ export function useEmbeddrLibraries({
       let baseUrl = apiBase;
       if (baseUrl.endsWith("/")) baseUrl = baseUrl.slice(0, -1);
 
-      const res = await fetch(`${baseUrl}/workspace/paths`);
+      const headers: Record<string, string> = {
+        "Content-Type": "application/json",
+      };
+      if (apiKey) {
+        headers["X-API-Key"] = apiKey;
+      }
+
+      const url = `${baseUrl}/workspace/paths`;
+      let res: Response;
+      // Use Proxy
+      if (url.startsWith("http")) {
+        res = await fetch(`/embeddr/proxy?url=${encodeURIComponent(url)}`, {
+          method: "GET",
+          headers,
+        });
+      } else {
+        res = await fetch(url, { method: "GET", headers });
+      }
+
       if (res.ok) {
         const data = await res.json();
         setLibraries(data);
@@ -32,9 +52,11 @@ export function useEmbeddrLibraries({
   // Fetch libraries when in local mode
   useEffect(() => {
     if (configLoaded && mode === "local") {
-      fetchLibraries();
+      // TODO: Backend route /api/v1/workspace/paths is currently missing.
+      // Re-enable this when the endpoint is restored or replaced.
+      // fetchLibraries();
     }
-  }, [configLoaded, mode, apiBase]);
+  }, [configLoaded, mode, apiBase, apiKey]);
 
   return {
     libraries,

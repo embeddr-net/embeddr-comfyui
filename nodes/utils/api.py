@@ -1,12 +1,12 @@
 import requests
-from .config import get_embeddr_base_url
+from .config import get_embeddr_base_url, get_auth_headers
 
 
 def get_libraries():
     try:
         base_url = get_embeddr_base_url()
         api_url = f"{base_url}/api/v1/libraries"
-        response = requests.get(api_url)
+        response = requests.get(api_url, headers=get_auth_headers())
         if response.status_code == 200:
             data = response.json()
             # Return list of names, but we might need IDs.
@@ -23,7 +23,7 @@ def get_collections():
     try:
         base_url = get_embeddr_base_url()
         api_url = f"{base_url}/api/v1/collections"
-        response = requests.get(api_url)
+        response = requests.get(api_url, headers=get_auth_headers())
         if response.status_code == 200:
             data = response.json()
             return [f"{col['id']}: {col['name']}" for col in data]

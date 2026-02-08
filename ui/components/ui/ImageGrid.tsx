@@ -3,6 +3,7 @@ import { ScrollArea } from "@embeddr/react-ui/components/scroll-area";
 import { Eye, PenLineIcon } from "lucide-react";
 import { Button } from "@embeddr/react-ui/components/button";
 import { cn } from "@embeddr/react-ui";
+import { AuthorizedImage } from "./AuthorizedImage";
 
 import type { PromptImageRead } from "@hooks/useEmbeddrApi";
 
@@ -18,6 +19,7 @@ interface ImageGridProps {
   gridSize?: number;
   imagePreviewContain?: boolean;
   scrollRef?: React.RefObject<HTMLDivElement | null>;
+  apiKey?: string;
 }
 
 export function ImageGrid({
@@ -32,6 +34,7 @@ export function ImageGrid({
   gridSize = 3,
   imagePreviewContain = true,
   scrollRef,
+  apiKey,
 }: ImageGridProps) {
   const observerTarget = useRef(null);
 
@@ -42,7 +45,7 @@ export function ImageGrid({
           onLoadMore();
         }
       },
-      { threshold: 0, rootMargin: "200px" }
+      { threshold: 0, rootMargin: "200px" },
     );
 
     if (observerTarget.current) {
@@ -74,7 +77,7 @@ export function ImageGrid({
         {images.map((image) => (
           <div
             key={image.id}
-            className={`relative aspect-square group cursor-pointer overflow-hidden border bg-muted ${
+            className={`relative rounded-md aspect-square group cursor-pointer overflow-hidden border bg-muted ${
               selectedId === image.id ? "border-2 border-primary" : ""
             }`}
             onContextMenu={(e) => {
@@ -85,14 +88,14 @@ export function ImageGrid({
             draggable
             onDragStart={(e) => handleDragStart(e, image)}
           >
-            <img
+            <AuthorizedImage
               src={`${image.thumb_url || image.image_url}`}
               alt={image.prompt}
               className={cn(
                 "w-full h-full transition-transform group-hover:scale-105",
-                imagePreviewContain ? "object-contain" : "object-cover"
+                imagePreviewContain ? "object-contain" : "object-cover",
               )}
-              loading="lazy"
+              apiKey={apiKey}
             />
             <div className="absolute inset-0  flex flex-col justify-between p-2">
               <div className="flex justify-end">

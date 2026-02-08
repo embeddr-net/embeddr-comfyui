@@ -5,6 +5,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@embeddr/react-ui/components/dialog";
+import { useImageDialog } from "@embeddr/react-ui";
 import { ExploreTab } from "./tabs/ExploreTab";
 import { CollectionSelector } from "./selectors/CollectionSelector";
 import { useEmbeddrApi } from "../hooks/useEmbeddrApi";
@@ -19,6 +20,13 @@ export function GlobalDialog() {
   const [mode, setMode] = useState<DialogMode>("image");
 
   const api = useEmbeddrApi();
+  const { setApiKey: setDialogApiKey } = useImageDialog();
+
+  useEffect(() => {
+    if (setDialogApiKey && api.apiKey) {
+      setDialogApiKey(api.apiKey);
+    }
+  }, [api.apiKey, setDialogApiKey]);
 
   useEffect(() => {
     const handleOpen = (e: Event) => {
@@ -46,7 +54,7 @@ export function GlobalDialog() {
   useEffect(() => {
     const applyTheme = () => {
       const portals = document.querySelectorAll(
-        "[data-radix-portal], [data-slot='dialog-content'], [data-slot='dialog-overlay'], [data-slot='select-content'], [data-slot='select-viewport'], [data-slot='popover-content'], [data-slot='dropdown-menu-content']"
+        "[data-radix-portal], [data-slot='dialog-content'], [data-slot='dialog-overlay'], [data-slot='select-content'], [data-slot='select-viewport'], [data-slot='popover-content'], [data-slot='dropdown-menu-content']",
       );
 
       const isDark = api.theme === "dark";
@@ -54,6 +62,12 @@ export function GlobalDialog() {
       portals.forEach((portal) => {
         if (!portal.classList.contains("tailwind")) {
           portal.classList.add("tailwind");
+        }
+        if (!portal.classList.contains("font-sans")) {
+          portal.classList.add("font-sans");
+        }
+        if (!portal.classList.contains("embeddr-theme-root")) {
+          portal.classList.add("embeddr-theme-root");
         }
         if (isDark) {
           portal.classList.add("dark");
@@ -88,7 +102,7 @@ export function GlobalDialog() {
 
           // 1. Try "collection_ids" -> Set ID
           const idWidget = node.widgets?.find(
-            (w: any) => w.name === "collection_ids"
+            (w: any) => w.name === "collection_ids",
           );
           if (idWidget) {
             idWidget.value = item.id.toString();
@@ -100,11 +114,11 @@ export function GlobalDialog() {
           // 2. Try "collection_id" -> Set ID (for FindCollection node V2)
           console.log(
             "[Embeddr] Debug: Listing node widgets:",
-            node.widgets?.map((w: any) => w.name)
+            node.widgets?.map((w: any) => w.name),
           );
 
           const colIdWidget = node.widgets?.find(
-            (w: any) => w.name === "collection_id"
+            (w: any) => w.name === "collection_id",
           );
 
           let idSet = false;
@@ -118,7 +132,7 @@ export function GlobalDialog() {
           } else {
             console.warn(
               "[Embeddr] collection_id widget not found on node or invalid item.id!",
-              { widgetFound: !!colIdWidget, itemId: item.id }
+              { widgetFound: !!colIdWidget, itemId: item.id },
             );
           }
 
@@ -135,13 +149,13 @@ export function GlobalDialog() {
           // If we successfully set the ID, clear the name widget to avoid confusion
           // and ensure the backend uses the ID.
           const nameWidget = node.widgets?.find(
-            (w: any) => w.name === "collection_name"
+            (w: any) => w.name === "collection_name",
           );
           if (nameWidget) {
             if (idSet) {
               // Clear name to prioritize ID match and avoid ambiguity
               console.log(
-                "[Embeddr] Clearing collection_name widget to prioritize ID"
+                "[Embeddr] Clearing collection_name widget to prioritize ID",
               );
               nameWidget.value = "";
             } else {
@@ -161,7 +175,7 @@ export function GlobalDialog() {
           // Handle Image Selection
           // Check for artifact_id (V2) or image_id (V1)
           const idWidget = node.widgets?.find(
-            (w: any) => w.name === "artifact_id" || w.name === "image_id"
+            (w: any) => w.name === "artifact_id" || w.name === "image_id",
           );
           if (idWidget) {
             idWidget.value = item.id.toString();
@@ -177,7 +191,7 @@ export function GlobalDialog() {
 
           // Also update image_url if it exists (for preview/compatibility)
           const urlWidget = node.widgets?.find(
-            (w: any) => w.name === "image_url"
+            (w: any) => w.name === "image_url",
           );
           if (urlWidget) {
             urlWidget.value = item.image_url;
@@ -213,6 +227,7 @@ export function GlobalDialog() {
               {...api}
               activeTab="explore"
               onImageSelect={handleSelect}
+              apiKey={api.apiKey}
             />
           )}
         </div>

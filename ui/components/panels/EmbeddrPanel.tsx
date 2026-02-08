@@ -6,8 +6,14 @@ import {
   TabsList,
   TabsTrigger,
 } from "@embeddr/react-ui/components/tabs";
-import { useExternalNav } from "@embeddr/react-ui";
-import { GlobeIcon, MessageCircleIcon, Search, Settings } from "lucide-react";
+import { useExternalNav, useImageDialog } from "@embeddr/react-ui";
+import {
+  GlobeIcon,
+  MessageCircleIcon,
+  Search,
+  Settings,
+  LayoutTemplate,
+} from "lucide-react";
 import { Button } from "@embeddr/react-ui/components/button";
 import { useEmbeddrApi } from "@hooks/useEmbeddrApi";
 import { SettingsForm } from "../tabs/SettingsForm";
@@ -34,10 +40,22 @@ export default function EmbeddrPanel() {
     setSimilarImageId,
     theme,
     setTheme,
+    themePackId,
+    setThemePackId,
+    apiBase,
     apiClient,
+    apiKey,
+    setApiKey,
   } = useEmbeddrApi();
 
   const { openExternal } = useExternalNav();
+  const { setApiKey: setDialogApiKey } = useImageDialog();
+
+  useEffect(() => {
+    if (setDialogApiKey && apiKey) {
+      setDialogApiKey(apiKey);
+    }
+  }, [apiKey, setDialogApiKey]);
 
   const [activeTab, setActiveTab] = useState("explore");
 
@@ -55,7 +73,36 @@ export default function EmbeddrPanel() {
   }, [viewMode, configLoaded, selectedLibrary, mode, similarImageId]);
 
   const handleSave = async () => {
-    await saveSettings(endpoint, mode, gridSize, gridPreviewContain);
+    await saveSettings(endpoint, mode, gridSize, gridPreviewContain, apiKey);
+  };
+
+  const dispatchShellEvent = (
+    name: string,
+    detail?: Record<string, unknown>,
+  ) => {
+    const targets: Window[] = [];
+    console.log("[EmbeddrPanel] Dispatching event", name, detail);
+    const addTarget = (target?: Window | null) => {
+      if (!target) return;
+      if (!targets.includes(target)) targets.push(target);
+    };
+    addTarget(window);
+    try {
+      addTarget(window.parent);
+    } catch (e) {
+      console.warn("[EmbeddrPanel] Unable to access window.parent", e);
+    }
+    try {
+      addTarget(window.top);
+    } catch (e) {
+      console.warn("[EmbeddrPanel] Unable to access window.top", e);
+    }
+
+    targets.forEach((target) => {
+      const event = new CustomEvent(name, { detail });
+      console.log("[EmbeddrPanel] Sending event to target", target, event);
+      target.dispatchEvent(event);
+    });
   };
 
   return (
@@ -84,6 +131,14 @@ export default function EmbeddrPanel() {
                 <MessageCircleIcon className="w-4 h-4" />
               </TabsTrigger>
             </TabsList>
+            <Button
+              variant="link"
+              size="icon"
+              title="Toggle Zen Shell"
+              onClick={() => dispatchShellEvent("embeddr-toggle-shell")}
+            >
+              <LayoutTemplate className="w-4 h-4" />
+            </Button>
             <Button
               variant="link"
               size="icon"
@@ -122,6 +177,7 @@ export default function EmbeddrPanel() {
             gridPreviewContain={gridPreviewContain}
             configLoaded={configLoaded}
             activeTab={activeTab}
+            apiKey={apiKey}
           />
         </TabsContent>
 
@@ -137,6 +193,11 @@ export default function EmbeddrPanel() {
             setGridSize={setGridSize}
             theme={theme}
             setTheme={setTheme}
+            apiKey={apiKey}
+            setApiKey={setApiKey}
+            apiBase={apiBase}
+            themePackId={themePackId}
+            setThemePackId={setThemePackId}
             onSave={handleSave}
           />
         </TabsContent>

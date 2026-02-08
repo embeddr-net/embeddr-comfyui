@@ -1,8 +1,8 @@
 import { app } from "../../../scripts/app.js";
 
 const _ID = "embeddr.MergeIDs";
-const _PREFIX = "id";
-const _TYPE = "STRING";
+const _PREFIX = "artifact_";
+const _TYPE = "EMBEDDR_ARTIFACT_ID";
 
 app.registerExtension({
   name: "embeddr.dynamic_merge_ids",
@@ -29,7 +29,7 @@ app.registerExtension({
       slotIdx,
       event,
       linkInfo,
-      nodeSlot
+      nodeSlot,
     ) {
       const me = onConnectionsChange?.apply(this, arguments);
 

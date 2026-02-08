@@ -6,18 +6,20 @@ import io as pyio
 from comfy_api.latest import io, ui
 from .utils import get_config
 from .utils.config import get_auth_headers
+from .types import EmbeddrArtifactID
 
 
-class EmbeddrFindSimilarArtifactsNode(io.ComfyNode):
+class EmbeddrFindSimilarToArtifactNode(io.ComfyNode):
     @classmethod
     def define_schema(cls) -> io.Schema:
         return io.Schema(
-            node_id="embeddr.FindSimilarArtifacts",
-            display_name="Embeddr Find Similar Artifacts (V2)",
-            description="Finds similar artifacts using an input image via V2 API.",
+            node_id="embeddr.FindSimilarToArtifact",
+            display_name="Embeddr Find Similar To Artifact ID",
+            description="Finds similar artifacts using an existing Artifact ID.",
             category="Embeddr",
             inputs=[
-                io.Image.Input("image"),
+                EmbeddrArtifactID.Input(
+                    "artifact_id", tooltip="The Source Artifact ID"),
                 io.Int.Input("limit", default=5, min=1, max=50),
                 io.String.Input("model_name", default="lotus"),
             ],
@@ -28,33 +30,35 @@ class EmbeddrFindSimilarArtifactsNode(io.ComfyNode):
         )
 
     @classmethod
-    def execute(cls, image, limit, model_name="lotus"):
+    def execute(cls, artifact_id, limit, model_name="lotus"):
         config = get_config()
         base_url = config.get("embeddr_url") or config.get(
             "endpoint") or "http://localhost:8003"
         base_url = base_url.rstrip("/")
 
         # Endpoint in Plugin
-        api_url = f"{base_url}/api/v1/plugins/embeddr-comfyui/find_similar"
+        api_url = f"{base_url}/api/v1/plugins/embeddr-comfyui/find_similar_to_id"
 
-        # Prepare image (take first of batch for query)
-        img_array = (image[0].cpu().numpy() * 255).astype(np.uint8)
-        img = Image.fromarray(np.clip(img_array, 0, 255))
+        # Resolve ID if object
+        aid = str(artifact_id)
+        if hasattr(artifact_id, "artifact_id"):
+            aid = str(artifact_id.artifact_id)
+            if isinstance(aid, list):
+                aid = aid[0]  # Take first if list
 
-        buf = pyio.BytesIO()
-        img.save(buf, format="PNG")
-        buf.seek(0)
-
-        files = {"file": ("query.png", buf, "image/png")}
-        data = {"limit": limit, "model_name": model_name}
+        data = {
+            "artifact_id": aid,
+            "limit": limit,
+            "model_name": model_name
+        }
 
         try:
-            # Upload & Search
+            # Search
             response = requests.post(
-                api_url, files=files, data=data, headers=get_auth_headers())
+                api_url, data=data, headers=get_auth_headers())
             response.raise_for_status()
             results = response.json()
-            items = results.get("items", [])  # List of objects {id, uri, ...}
+            items = results.get("items", [])
 
             if not items:
                 empty = torch.zeros(
@@ -75,7 +79,6 @@ class EmbeddrFindSimilarArtifactsNode(io.ComfyNode):
                         i = Image.open(pyio.BytesIO(img_resp.content))
                         i = i.convert("RGB")
                         i_np = np.array(i).astype(np.float32) / 255.0
-                        # Add batch dim [1, H, W, C]
                         output_images.append(torch.from_numpy(i_np)[None,])
                         output_ids.append(str(art_id))
                 except Exception as e:
@@ -90,7 +93,7 @@ class EmbeddrFindSimilarArtifactsNode(io.ComfyNode):
             return io.NodeOutput(output_images, output_ids)
 
         except Exception as e:
-            print(f"[Embeddr] FindSimilar Error: {e}")
+            print(f"[Embeddr] FindSimilarToID Error: {e}")
             empty = torch.zeros(
                 (1, 64, 64, 3), dtype=torch.float32, device="cpu")
             return io.NodeOutput([empty], ["-1"])

@@ -1,21 +1,18 @@
-import folder_paths
-from .utils.api import get_libraries, get_collections
 import os
 import json
 import requests
 import tempfile
-from comfy_api.latest import io, ui
-from comfy_api.latest._io import ComfyNode
-from .utils import get_embeddr_base_url
+from comfy_api.latest import io
+from .utils.ids import normalize_ids
+from .utils.config import get_embeddr_base_url, get_upload_mode, get_auth_headers
+from .EmbeddrUploadOptions import EmbeddrUploadArtifactOptions, EmbeddrUploadArtifactOptionsObject
+from .types import EmbeddrArtifactID, EmbeddrArtifactIDObject
 
 
 class EmbeddrUploadVideo(io.ComfyNode):
 
     @classmethod
     def define_schema(cls) -> io.Schema:
-        libraries = ["Default"] + get_libraries()
-        collections = ["None"] + get_collections()
-
         formats = ["mp4", "mkv", "webm", "mov", "avi"]
         codecs = ["h264", "h265", "vp9", "vp8", "prores"]
 
@@ -27,21 +24,15 @@ class EmbeddrUploadVideo(io.ComfyNode):
             inputs=[
                 io.Video.Input("video", tooltip="The video to save."),
                 io.String.Input("caption", optional=True),
-                io.String.Input("parent_ids", optional=True),
-                io.Combo.Input("library", options=libraries,
-                               default="Default"),
-                io.Combo.Input(
-                    "collection", options=collections, default="None"),
-                io.String.Input("tags", optional=True, default=""),
+                EmbeddrArtifactID.Input("parent_ids", optional=True,
+                                        tooltip="Parent artifact UUIDs"),
+                EmbeddrUploadArtifactOptions.Input("options", tooltip="Upload Artifact Options",
+                                                   optional=True, display_name="Options"),
                 io.Combo.Input("format", options=formats, default="mp4"),
                 io.Combo.Input("codec", options=codecs, default="h264"),
-                io.Boolean.Input("allow_duplicates", default=False,
-                                 display_name="Allow Duplicates"),
-                io.Boolean.Input("save_backup", default=False,
-                                 display_name="Save to Comfy History"),
             ],
             outputs=[
-                io.String.Output("embeddr_id"),
+                EmbeddrArtifactID.Output("artifact_ids"),
             ],
         )
 
@@ -50,11 +41,36 @@ class EmbeddrUploadVideo(io.ComfyNode):
         return True
 
     @classmethod
-    def execute(cls, video, caption=None, parent_ids=None, library="Default", collection="None", tags="", format="mp4", codec="h264", allow_duplicates=False, save_backup=False, **kwargs):
+    def execute(
+        cls,
+        video,
+        caption=None,
+        parent_ids: EmbeddrArtifactIDObject = None,
+        options: EmbeddrUploadArtifactOptionsObject = None,
+        format="mp4",
+        codec="h264",
+        **kwargs,
+    ):
         uploaded_ids = []
         base_url = get_embeddr_base_url()
-        api_base_url = f"{base_url}/api/v1"
-        upload_url = f"{api_base_url}/images/upload"
+        upload_mode = get_upload_mode()
+        upload_url = f"{base_url}/api/v1/plugins/embeddr-comfyui/upload"
+
+        normalized_parent_ids = normalize_ids(parent_ids)
+
+        if upload_mode in {"skip", "disabled", "off", "none"}:
+            print(
+                "[Embeddr] Upload disabled (EMBEDDR_UPLOAD_MODE). Skipping Embeddr upload.")
+            return io.NodeOutput(EmbeddrArtifactIDObject(artifact_id=""))
+
+        if upload_mode in {"best_effort", "auto"}:
+            try:
+                health_url = f"{base_url}/api/v1/system/routes"
+                requests.get(health_url, timeout=2)
+            except Exception as e:
+                print(
+                    f"[Embeddr] Embeddr backend unavailable ({e}); skipping upload.")
+                return io.NodeOutput(EmbeddrArtifactIDObject(artifact_id=""))
 
         try:
             # Create temp file
@@ -67,37 +83,58 @@ class EmbeddrUploadVideo(io.ComfyNode):
             # But often strings work or we can map them if we knew the library.
             video.save_to(temp_path, format=format, codec=codec)
 
-            # Upload
+            storage_provider = None
+            storage_path = None
+            if options:
+                if isinstance(options, dict):
+                    storage_provider = options.get("storage_provider")
+                    storage_path = options.get("storage_path")
+                else:
+                    storage_provider = getattr(
+                        options, "storage_provider", None)
+                    storage_path = getattr(options, "storage_path", None)
+
+            storage_provider = (
+                str(storage_provider).strip().lower()
+                if storage_provider not in (None, "", "__default__")
+                else None
+            )
+            storage_path = (
+                str(storage_path).strip()
+                if storage_path not in (None, "", "__default__")
+                else None
+            )
+
+            meta = {
+                "parent_ids": normalized_parent_ids,
+                "collection_ids": normalize_ids(options.related_artifact_ids) if options else [],
+                "tags": normalize_ids(options.tags) if options else [],
+                "trigger_automation": options.trigger_ingest if options else True,
+                "compute_embedding": options.trigger_ingest if options else True,
+                "caption": caption or "",
+                "confirm": True,
+            }
+
+            if storage_provider:
+                meta["storage_provider"] = storage_provider
+                meta["storage_backend"] = storage_provider
+            if storage_path:
+                meta["storage_path"] = storage_path
+
             with open(temp_path, "rb") as f:
                 files = {"file": (f"video.{format}", f, f"video/{format}")}
-                data = {"prompt": caption or ""}
-                if allow_duplicates:
-                    data["force"] = "true"
-                if tags:
-                    data["tags"] = tags
-                if library != "Default":
-                    try:
-                        data["library_id"] = int(library.split(":")[0])
-                    except:
-                        pass
-                if parent_ids:
-                    data["parent_ids"] = parent_ids
+                data = {"metadata": json.dumps(meta)}
 
-                response = requests.post(upload_url, files=files, data=data)
+                response = requests.post(
+                    upload_url,
+                    files=files,
+                    data=data,
+                    headers=get_auth_headers(),
+                )
                 response.raise_for_status()
                 result = response.json()
                 uploaded_id = result.get("id")
                 uploaded_ids.append(str(uploaded_id))
-
-                if collection and collection != "None" and uploaded_id:
-                    try:
-                        collection_id = int(collection.split(":")[0])
-                        requests.post(
-                            f"{api_base_url}/collections/{collection_id}/items",
-                            json={"image_id": uploaded_id}
-                        )
-                    except Exception as e:
-                        print(f"[Embeddr] Failed to add to collection: {e}")
 
         except Exception as e:
             print(f"[Embeddr] Video upload failed: {e}")
@@ -106,4 +143,5 @@ class EmbeddrUploadVideo(io.ComfyNode):
             if 'temp_path' in locals() and os.path.exists(temp_path):
                 os.remove(temp_path)
 
-        return io.NodeOutput(",".join(uploaded_ids))
+        result_str = ",".join(uploaded_ids)
+        return io.NodeOutput(EmbeddrArtifactIDObject(artifact_id=result_str))

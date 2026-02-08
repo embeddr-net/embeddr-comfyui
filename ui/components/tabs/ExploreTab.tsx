@@ -43,6 +43,7 @@ interface ExploreTabProps {
   configLoaded: boolean;
   activeTab: string;
   onImageSelect?: (image: PromptImageRead) => void;
+  apiKey?: string;
 }
 
 export function ExploreTab({
@@ -62,6 +63,7 @@ export function ExploreTab({
   configLoaded,
   activeTab,
   onImageSelect,
+  apiKey,
 }: ExploreTabProps) {
   const { targetNodes, handleLoadIntoNode, handleUseImage } = useNodeScanner();
   const { openImage, closeImage, setGalleryImages, currentGallery } =
@@ -170,6 +172,7 @@ export function ExploreTab({
               gridSize={gridSize}
               imagePreviewContain={gridPreviewContain}
               scrollRef={scrollRef}
+              apiKey={apiKey}
               onRightClick={(e) => {
                 setSelectedImage(e);
               }}
@@ -269,6 +272,7 @@ export function ExploreTab({
                   onLoadIntoNode={handleLoadIntoNode}
                   apiBase={apiBase}
                   apiClient={apiClient}
+                  apiKey={apiKey}
                 />
               </ResizablePanel>
             </>

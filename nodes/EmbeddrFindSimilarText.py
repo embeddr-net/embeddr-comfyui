@@ -6,6 +6,7 @@ import io as pyio
 from comfy_api.latest import io, ui
 from .utils import get_config
 from .utils.api import get_libraries, get_collections
+from .utils.config import get_auth_headers
 
 
 class EmbeddrFindSimilarTextNode(io.ComfyNode):
@@ -60,7 +61,8 @@ class EmbeddrFindSimilarTextNode(io.ComfyNode):
                 pass
 
         try:
-            response = requests.get(api_url, params=params)
+            response = requests.get(
+                api_url, params=params, headers=get_auth_headers())
             response.raise_for_status()
             results = response.json()
             items = results.get("items", [])
@@ -82,7 +84,7 @@ class EmbeddrFindSimilarTextNode(io.ComfyNode):
                 # Fetch image file
                 img_url = endpoint.rstrip(
                     "/") + f"/api/v1/images/{item['id']}/file"
-                img_resp = requests.get(img_url)
+                img_resp = requests.get(img_url, headers=get_auth_headers())
                 if img_resp.status_code == 200:
                     i = Image.open(pyio.BytesIO(img_resp.content))
                     i = ImageOps.exif_transpose(i)

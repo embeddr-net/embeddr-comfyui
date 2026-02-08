@@ -4,11 +4,17 @@ import { Label } from "@embeddr/react-ui/components/label";
 import { Button } from "@embeddr/react-ui/components/button";
 import { Slider } from "@embeddr/react-ui/components/slider";
 import { Switch } from "@embeddr/react-ui/components/switch";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@embeddr/react-ui/components/select";
 
-import { Cloud, Moon, Server, Sun } from "lucide-react";
-// @ts-ignore
-import { app } from "../../../../scripts/app.js";
+import { Moon, Server, Sun } from "lucide-react";
 import type { ApiMode } from "@hooks/useEmbeddrApi";
+import { useThemePacks } from "@hooks/useThemePacks";
 
 interface SettingsFormProps {
   endpoint: string;
@@ -21,6 +27,11 @@ interface SettingsFormProps {
   setGridPreviewContain: (contain: boolean) => void;
   theme: string;
   setTheme: (theme: string) => void;
+  apiKey?: string;
+  setApiKey?: (key: string) => void;
+  apiBase: string;
+  themePackId: string;
+  setThemePackId: (value: string) => void;
   onSave: () => void;
 }
 
@@ -35,29 +46,27 @@ export function SettingsForm({
   setGridPreviewContain,
   theme,
   setTheme,
+  apiKey = "",
+  setApiKey,
+  apiBase,
+  themePackId,
+  setThemePackId,
   onSave,
 }: SettingsFormProps) {
+  const { packs, isLoading } = useThemePacks(apiBase, Boolean(apiBase));
+  const hasPacks = packs.length > 0;
+
   return (
     <div className="space-y-4 p-2">
       <div className="space-y-2">
         <div className="flex gap-2">
-          <Button
-            variant={mode !== "local" ? "default" : "outline"}
-            className="flex-1"
-            onClick={() => {
-              app.extensionManager.toast.addAlert("Cloud Coming Soon!!");
-            }}
-          >
-            <Cloud className="w-4 h-4 mr-2" />
-            Cloud
-          </Button>
           <Button
             variant={mode === "local" ? "default" : "outline"}
             className="flex-1"
             onClick={() => {
               setMode("local");
               if (endpoint === "") {
-                setEndpoint("http://localhost:8003/api/v1");
+                setEndpoint("http://localhost:8003");
               }
             }}
           >
@@ -79,6 +88,20 @@ export function SettingsForm({
           {mode !== "local"
             ? "Change this if you are using a self-hosted instance or development server."
             : "The URL of your local Embeddr instance."}
+        </p>
+      </div>
+
+      <div className="space-y-2">
+        <Label htmlFor="api-key">API Key</Label>
+        <Input
+          id="api-key"
+          type="password"
+          placeholder="Enter API Key (optional)"
+          value={apiKey}
+          onChange={(e) => setApiKey && setApiKey(e.target.value)}
+        />
+        <p className="text-xs text-muted-foreground">
+          Optional API Key for authentication (X-API-Key).
         </p>
       </div>
 
@@ -137,6 +160,34 @@ export function SettingsForm({
             )}
           </span>
         </div>
+      </div>
+
+      <div className="space-y-2">
+        <Label htmlFor="theme-pack">Theme Pack</Label>
+        <Select
+          value={themePackId || "default"}
+          onValueChange={(value) =>
+            setThemePackId(value === "default" ? "" : value)
+          }
+          disabled={isLoading || !hasPacks}
+        >
+          <SelectTrigger id="theme-pack">
+            <SelectValue
+              placeholder={isLoading ? "Loading..." : "Select theme pack"}
+            />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="default">Default</SelectItem>
+            {packs.map((pack) => (
+              <SelectItem key={pack.id} value={pack.id}>
+                {pack.name || pack.id}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <p className="text-xs text-muted-foreground">
+          Theme packs apply token overrides and optional CSS.
+        </p>
       </div>
 
       <Button onClick={onSave} className="w-full">

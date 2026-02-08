@@ -9,6 +9,9 @@ from io import BytesIO
 from comfy_api.latest import io, ui
 from .utils import get_config
 from .utils.api import get_collections
+from .utils.config import get_auth_headers
+from .utils.ids import normalize_ids
+from .types import EmbeddrArtifactID
 
 
 class EmbeddrLoadArtifactsNode(io.ComfyNode):
@@ -31,10 +34,10 @@ class EmbeddrLoadArtifactsNode(io.ComfyNode):
 
     @classmethod
     def _resolve_artifact_url(cls, base_url: str, artifact_id: str):
-        resolve_url = f"{base_url}/api/v2/artifacts/{artifact_id}/resolve?variant=original&proxy=1"
+        resolve_url = f"{base_url}/api/v1/artifacts/{artifact_id}/resolve?variant=original&proxy=1"
         cls._debug("resolving_artifact", artifact_id=artifact_id,
                    resolve_url=resolve_url)
-        res = requests.get(resolve_url)
+        res = requests.get(resolve_url, headers=get_auth_headers())
         res.raise_for_status()
         data = res.json()
         url = data.get("url")
@@ -42,13 +45,13 @@ class EmbeddrLoadArtifactsNode(io.ComfyNode):
         if url and url.startswith("/"):
             url = urljoin(base_url, url)
 
-        if url and "/api/v2/artifacts/" in url and "/content" in url and "proxy=" not in url:
+        if url and "/api/v1/artifacts/" in url and "/content" in url and "proxy=" not in url:
             url = f"{url}?proxy=1"
 
         base_netloc = urlparse(base_url).netloc
         url_netloc = urlparse(url).netloc if url else ""
         if url and base_netloc and url_netloc and url_netloc != base_netloc:
-            proxy_url = f"{base_url}/api/v2/artifacts/{artifact_id}/content?proxy=1"
+            proxy_url = f"{base_url}/api/v1/artifacts/{artifact_id}/content?proxy=1"
             cls._debug(
                 "forcing_proxy_url",
                 artifact_id=artifact_id,
@@ -70,6 +73,8 @@ class EmbeddrLoadArtifactsNode(io.ComfyNode):
             description="Loads generic artifacts (images) from Embeddr using V2 API.",
             category="Embeddr",
             inputs=[
+                EmbeddrArtifactID.Input(
+                    "artifact_ids", tooltip="Optional list of IDs to load (overrides collection)", optional=True),
                 io.Combo.Input(
                     "collection", options=collections, default="All"),
                 io.Combo.Input("sort_by", options=[
@@ -85,8 +90,18 @@ class EmbeddrLoadArtifactsNode(io.ComfyNode):
         )
 
     @classmethod
-    def execute(cls, collection, sort_by, limit, seed):
-        cache_key = (collection, sort_by, limit, seed)
+    def execute(cls, collection, sort_by, limit, seed, artifact_ids=None):
+        # Check for explicit IDs first
+        manual_ids = normalize_ids(artifact_ids)
+
+        # We cache based on manual_ids if present, else collection params
+        if manual_ids:
+            # Sort for stability in cache key
+            manual_ids.sort()
+            cache_key = ("ids", tuple(manual_ids))
+        else:
+            cache_key = (collection, sort_by, limit, seed)
+
         if cache_key in cls._cache:
             return cls._cache[cache_key]
 
@@ -96,31 +111,44 @@ class EmbeddrLoadArtifactsNode(io.ComfyNode):
                 "endpoint") or "http://localhost:8003"
             base_url = base_url.rstrip("/")
 
-            # List Artifacts
-            api_url = f"{base_url}/api/v2/artifacts/"
-            params = {
-                "limit": limit,
-                "type_name": "image",
-                "offset": 0
-            }
+            items = []
 
-            if collection != "All":
-                try:
-                    col_id = collection.split(":")[0].strip()
-                    params["collection_id"] = col_id
-                except:
-                    pass
+            # 1. Load by IDs
+            if manual_ids:
+                # We can fetch them one by one or via a wrapper if API supports batch.
+                # Assuming singular fetch for now to be safe, or check if /api/v1/artifacts/ supports ids=...
+                # Iterate and construct items list
+                for aid in manual_ids:
+                    items.append({"id": aid})
 
-            if sort_by == "random":
-                params["sort"] = "random"
-                params["seed"] = seed  # Pass seed if API supports it
+            # 2. Load via Search/Collection
             else:
-                params["sort"] = "new"
+                # List Artifacts
+                api_url = f"{base_url}/api/v1/artifacts/"
+                params = {
+                    "limit": limit,
+                    "type_name": "image",
+                    "offset": 0
+                }
 
-            response = requests.get(api_url, params=params)
-            response.raise_for_status()
-            data = response.json()
-            items = data.get("items", [])
+                if collection != "All":
+                    try:
+                        col_id = collection.split(":")[0].strip()
+                        params["collection_id"] = col_id
+                    except:
+                        pass
+
+                if sort_by == "random":
+                    params["sort"] = "random"
+                    params["seed"] = seed  # Pass seed if API supports it
+                else:
+                    params["sort"] = "new"
+
+                response = requests.get(
+                    api_url, params=params, headers=get_auth_headers())
+                response.raise_for_status()
+                data = response.json()
+                items = data.get("items", [])
 
             if not items:
                 return cls._return_empty()
@@ -135,7 +163,11 @@ class EmbeddrLoadArtifactsNode(io.ComfyNode):
                 content_url, content_headers = cls._resolve_artifact_url(
                     base_url, art_id)
                 try:
-                    c_resp = requests.get(content_url, headers=content_headers)
+                    final_headers = get_auth_headers()
+                    if content_headers:
+                        final_headers.update(content_headers)
+
+                    c_resp = requests.get(content_url, headers=final_headers)
                     c_resp.raise_for_status()
                     img = Image.open(BytesIO(c_resp.content))
                     img = ImageOps.exif_transpose(img)

@@ -1,6 +1,6 @@
 import requests
 from comfy_api.latest import io
-from .utils import get_config
+from .utils.config import get_config, get_auth_headers
 
 
 def Embeddr_Log(message: str):
@@ -45,7 +45,8 @@ class EmbeddrFindCollectionNode(io.ComfyNode):
         try:
             # 2. List Collections to Find by Name
             # Note: Removed limit=1000 to avoid potential 422 if API doesn't support it
-            resp = requests.get(f"{base_url}/api/v2/collections")
+            resp = requests.get(
+                f"{base_url}/api/v1/collections", headers=get_auth_headers())
             # If 404, maybe endpoint is different.
             if resp.status_code == 404:
                 # Fallback to V1? Or just fail.
@@ -80,7 +81,7 @@ class EmbeddrFindCollectionNode(io.ComfyNode):
                            "type_name": "collection:mix",
                            "uri": f"embeddr:///collections/{collection_name.lower().replace(' ', '_')}"}
                 resp = requests.post(
-                    f"{base_url}/api/v2/collections", json=payload)
+                    f"{base_url}/api/v1/collections", json=payload, headers=get_auth_headers())
                 resp.raise_for_status()
                 new_col = resp.json()
                 Embeddr_Log(

@@ -11,7 +11,7 @@ def _normalize_base_url(url: str | None, default: str) -> str:
     # Strip API suffixes to get the root base
     if clean.endswith("/api/v1"):
         clean = clean[:-7]
-    elif clean.endswith("/api/v2"):
+    elif clean.endswith("/api/v1"):
         clean = clean[:-7]
     elif clean.endswith("/api"):
         clean = clean[:-4]
@@ -50,6 +50,23 @@ def get_embeddr_base_url(default: str = "http://localhost:8003") -> str:
     )
 
     return _normalize_base_url(env_url or cfg_url, default)
+
+
+def get_api_key() -> str | None:
+    cfg = get_config()
+    return (
+        os.environ.get("EMBEDDR_API_KEY")
+        or os.environ.get("EMBEDDR_KEY")
+        or cfg.get("api_key")
+        or cfg.get("key")
+    )
+
+
+def get_auth_headers() -> dict[str, str]:
+    key = get_api_key()
+    if key:
+        return {"X-API-Key": key}
+    return {}
 
 
 def get_upload_mode(default: str = "require") -> str:

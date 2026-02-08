@@ -5,6 +5,7 @@ import { Badge } from "@embeddr/react-ui/components/badge";
 import { Separator } from "@embeddr/react-ui/components/separator";
 import { Skeleton } from "@embeddr/react-ui/components/skeleton";
 import { EmbeddrApiClient } from "@embeddr/api";
+import { AuthorizedImage } from "@components/ui/AuthorizedImage";
 
 import {
   ArrowBigRightDashIcon,
@@ -27,6 +28,7 @@ interface ImageDetailsProps {
   onUseImage: (imageUrl: string) => void;
   apiBase?: string;
   apiClient?: EmbeddrApiClient;
+  apiKey?: string;
 }
 
 interface ArtifactDetail {
@@ -45,6 +47,7 @@ export function ImageDetails({
   onUseImage,
   apiBase,
   apiClient,
+  apiKey,
 }: ImageDetailsProps) {
   const [copied, setCopied] = useState(false);
   const [artifact, setArtifact] = useState<ArtifactDetail | null>(null);
@@ -55,8 +58,8 @@ export function ImageDetails({
     if (!apiBase) return null;
     let baseUrl = apiBase;
     if (baseUrl.endsWith("/")) baseUrl = baseUrl.slice(0, -1);
-    if (!baseUrl.endsWith("/api/v2")) {
-      baseUrl = `${baseUrl}/api/v2`;
+    if (!baseUrl.endsWith("/api/v1")) {
+      baseUrl = `${baseUrl}/api/v1`;
     }
     return new EmbeddrApiClient({ baseUrl });
   }, [apiClient, apiBase]);
@@ -70,14 +73,27 @@ export function ImageDetails({
     setLoading(true);
     const client = localClient;
     const fallback = apiBase
-      ? apiBase.replace(/\/+$/, "").replace(/\/+api\/v2$/, "") + "/api/v2"
+      ? apiBase.replace(/\/+$/, "").replace(/\/+api\/v2$/, "") + "/api/v1"
       : "";
 
     if (client) {
       client.artifacts
         .get(selectedImage.id)
         .then((data) => setArtifact(data as ArtifactDetail))
-        .catch((e) => console.error("Failed to fetch artifact details", e))
+        .catch((e) => {
+          console.warn("Failed to fetch artifact, trying fallback headers", e);
+          // If client fails, try raw fetch with token from local storage as backup
+          if (fallback) {
+            const token = localStorage.getItem("embeddr_api_key");
+            const headers: any = {};
+            if (token) headers["X-API-Key"] = token;
+
+            fetch(`${fallback}/artifacts/${selectedImage.id}`, { headers })
+              .then((res) => res.json())
+              .then((data) => setArtifact(data))
+              .catch((err) => console.error("Double fallback failed", err));
+          }
+        })
         .finally(() => setLoading(false));
       return;
     }
@@ -88,7 +104,11 @@ export function ImageDetails({
       return;
     }
 
-    fetch(`${fallback}/artifacts/${selectedImage.id}`)
+    const token = localStorage.getItem("embeddr_api_key");
+    const headers: any = {};
+    if (token) headers["X-API-Key"] = token;
+
+    fetch(`${fallback}/artifacts/${selectedImage.id}`, { headers })
       .then((res) => (res.ok ? res.json() : null))
       .then((data) => setArtifact(data))
       .catch((e) => console.error("Failed to fetch artifact details", e))
@@ -108,10 +128,11 @@ export function ImageDetails({
       <ScrollArea className="flex-1 min-h-0" type="always">
         <div className="flex flex-col gap-1 pr-3">
           <div className="w-full shrink-0 overflow-hidden bg-muted border relative group">
-            <img
+            <AuthorizedImage
               src={selectedImage.thumb_url || selectedImage.image_url}
               alt="Selected"
               className="w-full h-full object-cover"
+              apiKey={apiKey}
             />
 
             {/* Overlay Controls */}

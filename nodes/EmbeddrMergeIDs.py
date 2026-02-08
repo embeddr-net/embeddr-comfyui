@@ -1,4 +1,5 @@
 from comfy_api.latest import io, ui
+from .types import EmbeddrArtifactID
 
 
 class EmbeddrMergeIDsNode(io.ComfyNode):
@@ -12,7 +13,8 @@ class EmbeddrMergeIDsNode(io.ComfyNode):
             category="Embeddr",
             inputs=[],
             outputs=[
-                io.String.Output("ids"),
+                EmbeddrArtifactID.Output(
+                    "artifact_ids", tooltip="List of merged Artifact IDs", display_name="artifact_ids"),
             ],
         )
 
@@ -21,7 +23,7 @@ class EmbeddrMergeIDsNode(io.ComfyNode):
         ids = []
         # Iterate through all possible inputs
         for key, value in kwargs.items():
-            if key.startswith("id") and value:
+            if key.startswith("artifact_") and value:
                 ids.append(value)
 
         # Return as list of strings
