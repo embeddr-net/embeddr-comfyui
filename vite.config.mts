@@ -89,6 +89,9 @@ export default defineConfig({
       "@": fileURLToPath(new URL("./ui", import.meta.url)),
       "@components": path.resolve(__dirname, "ui/components"),
       "@hooks": path.resolve(__dirname, "ui/hooks"),
+      "@embeddr/client-typescript": fileURLToPath(
+        new URL("../clients/client-typescript/src", import.meta.url),
+      ),
     },
   },
   define: {

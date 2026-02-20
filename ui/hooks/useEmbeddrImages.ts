@@ -1,5 +1,5 @@
 import { useCallback, useRef, useState } from "react";
-import type { EmbeddrApiClient } from "@embeddr/api";
+import type { EmbeddrApiClient } from "@embeddr/client-typescript";
 // @ts-ignore
 import { app } from "../../../scripts/app.js";
 import type { ApiMode, PromptImageRead } from "@types";

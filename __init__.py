@@ -19,6 +19,7 @@ from .nodes.EmbeddrLoadVideo import EmbeddrLoadVideoNode
 from .nodes.EmbeddrLoRAStack import EmbeddrLoRAStack
 from .nodes.EmbeddrFindCollection import EmbeddrFindCollectionNode
 from .nodes.EmbeddrUploadOptions import UploadArtifactOptionsNode
+from .nodes.EmbeddrAction import EmbeddrActionNode
 
 CONFIG_PATH = os.path.join(os.path.dirname(__file__), "config.json")
 
@@ -246,6 +247,7 @@ class EmbeddrComfyUIExtension(ComfyExtension):
             EmbeddrLoadVideoNode,
             EmbeddrLoRAStack,
             EmbeddrFindCollectionNode,
+            EmbeddrActionNode,
         ]
 
 

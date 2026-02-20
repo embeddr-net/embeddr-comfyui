@@ -1,5 +1,6 @@
 // @ts-ignore
 import { app } from "../../../scripts/app.js";
+import { EmbeddrDnDTypes } from "@embeddr/react-ui";
 import { registerNodeDragAndDrop } from "../utils/nodeDragAndDrop.js";
 
 app.registerExtension({
@@ -27,12 +28,42 @@ app.registerExtension({
 
       // Use utility to register drag and drop
       registerNodeDragAndDrop(nodeType, {
-        acceptTypes: ["embeddr/id"],
+        acceptTypes: [
+          EmbeddrDnDTypes.ARTIFACT_ID,
+          EmbeddrDnDTypes.IMAGE_ID,
+          EmbeddrDnDTypes.ARTIFACT,
+          "embeddr/id",
+          "embeddr/json",
+        ],
         onDrop: (e: DragEvent, node: any) => {
-          const id = e.dataTransfer?.getData("embeddr/id");
+          const dataTransfer = e.dataTransfer;
+          if (!dataTransfer) return false;
+
+          let id =
+            dataTransfer.getData(EmbeddrDnDTypes.ARTIFACT_ID) ||
+            dataTransfer.getData(EmbeddrDnDTypes.IMAGE_ID) ||
+            dataTransfer.getData("embeddr/id");
+
+          if (!id) {
+            const artifactRaw =
+              dataTransfer.getData(EmbeddrDnDTypes.ARTIFACT) ||
+              dataTransfer.getData("embeddr/json");
+            if (artifactRaw) {
+              try {
+                const parsed = JSON.parse(artifactRaw);
+                id =
+                  parsed?.id?.toString?.() ||
+                  parsed?.artifact_id?.toString?.() ||
+                  "";
+              } catch {
+                id = "";
+              }
+            }
+          }
+
           if (id) {
             const widget = node.widgets?.find(
-              (w: any) => w.name === "artifact_id"
+              (w: any) => w.name === "artifact_id",
             );
             if (widget) {
               widget.value = id;

@@ -33,11 +33,12 @@ class EmbeddrLoadArtifactsNode(io.ComfyNode):
             cls._logger.info("%s", message)
 
     @classmethod
-    def _resolve_artifact_url(cls, base_url: str, artifact_id: str):
+    def _resolve_artifact_url(cls, base_url: str, artifact_id: str, auth_ticket: str = ""):
         resolve_url = f"{base_url}/api/v1/artifacts/{artifact_id}/resolve?variant=original&proxy=1"
         cls._debug("resolving_artifact", artifact_id=artifact_id,
                    resolve_url=resolve_url)
-        res = requests.get(resolve_url, headers=get_auth_headers())
+        res = requests.get(
+            resolve_url, headers=get_auth_headers(auth_ticket=auth_ticket))
         res.raise_for_status()
         data = res.json()
         url = data.get("url")
@@ -75,6 +76,8 @@ class EmbeddrLoadArtifactsNode(io.ComfyNode):
             inputs=[
                 EmbeddrArtifactID.Input(
                     "artifact_ids", tooltip="Optional list of IDs to load (overrides collection)", optional=True),
+                io.String.Input("auth_ticket", default="",
+                                tooltip="Ephemeral auth ticket for per-user access", optional=True),
                 io.Combo.Input(
                     "collection", options=collections, default="All"),
                 io.Combo.Input("sort_by", options=[
@@ -90,7 +93,7 @@ class EmbeddrLoadArtifactsNode(io.ComfyNode):
         )
 
     @classmethod
-    def execute(cls, collection, sort_by, limit, seed, artifact_ids=None):
+    def execute(cls, collection, sort_by, limit, seed, artifact_ids=None, auth_ticket: str = ""):
         # Check for explicit IDs first
         manual_ids = normalize_ids(artifact_ids)
 
@@ -98,9 +101,10 @@ class EmbeddrLoadArtifactsNode(io.ComfyNode):
         if manual_ids:
             # Sort for stability in cache key
             manual_ids.sort()
-            cache_key = ("ids", tuple(manual_ids))
+            cache_key = ("ids", tuple(manual_ids), str(auth_ticket or ""))
         else:
-            cache_key = (collection, sort_by, limit, seed)
+            cache_key = (collection, sort_by, limit,
+                         seed, str(auth_ticket or ""))
 
         if cache_key in cls._cache:
             return cls._cache[cache_key]
@@ -145,7 +149,7 @@ class EmbeddrLoadArtifactsNode(io.ComfyNode):
                     params["sort"] = "new"
 
                 response = requests.get(
-                    api_url, params=params, headers=get_auth_headers())
+                    api_url, params=params, headers=get_auth_headers(auth_ticket=auth_ticket))
                 response.raise_for_status()
                 data = response.json()
                 items = data.get("items", [])
@@ -161,9 +165,9 @@ class EmbeddrLoadArtifactsNode(io.ComfyNode):
                 art_id = item.get("id")
 
                 content_url, content_headers = cls._resolve_artifact_url(
-                    base_url, art_id)
+                    base_url, art_id, auth_ticket)
                 try:
-                    final_headers = get_auth_headers()
+                    final_headers = get_auth_headers(auth_ticket=auth_ticket)
                     if content_headers:
                         final_headers.update(content_headers)
 

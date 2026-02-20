@@ -4,9 +4,9 @@ import {
   ResizableHandle,
   ResizablePanel,
   ResizablePanelGroup,
-} from "@embeddr/react-ui/components/resizable";
+} from "@embeddr/react-ui/components/ui";
 import { Search, Grid3X3 } from "lucide-react";
-import { Slider } from "@embeddr/react-ui/components/slider";
+import { Slider } from "@embeddr/react-ui/components/ui";
 import { ImageGrid } from "@components/ui/ImageGrid";
 import { useNodeScanner } from "@hooks/useNodeScanner";
 import { ImageDetails } from "../panels/ImageDetails";
@@ -17,7 +17,7 @@ import type {
   LibraryPath,
   PromptImageRead,
 } from "@hooks/useEmbeddrApi";
-import type { EmbeddrApiClient } from "@embeddr/api";
+import type { EmbeddrApiClient } from "@embeddr/client-typescript";
 
 interface ExploreTabProps {
   images: Array<PromptImageRead>;

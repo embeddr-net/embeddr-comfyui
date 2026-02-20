@@ -18,6 +18,7 @@ import "./nodes/EmbeddrMergeIds.js";
 import "./nodes/EmbeddrLoRAStack.js";
 import "./nodes/EmbeddrUploadArtifact.js";
 import "./nodes/EmbeddrFindCollection.js";
+import "./nodes/EmbeddrAction.js";
 // @ts-ignore
 import "./globals.css";
 

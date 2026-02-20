@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { EmbeddrApiClient } from "@embeddr/api";
+import { EmbeddrApiClient } from "@embeddr/client-typescript";
 import { useEmbeddrSettings } from "./useEmbeddrSettings";
 import { useEmbeddrLibraries } from "./useEmbeddrLibraries";
 import { useEmbeddrImages } from "./useEmbeddrImages";

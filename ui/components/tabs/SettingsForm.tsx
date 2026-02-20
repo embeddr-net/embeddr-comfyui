@@ -1,16 +1,16 @@
 import React from "react";
-import { Input } from "@embeddr/react-ui/components/input";
-import { Label } from "@embeddr/react-ui/components/label";
-import { Button } from "@embeddr/react-ui/components/button";
-import { Slider } from "@embeddr/react-ui/components/slider";
-import { Switch } from "@embeddr/react-ui/components/switch";
+import { Input } from "@embeddr/react-ui/components/ui";
+import { Label } from "@embeddr/react-ui/components/ui";
+import { Button } from "@embeddr/react-ui/components/ui";
+import { Slider } from "@embeddr/react-ui/components/ui";
+import { Switch } from "@embeddr/react-ui/components/ui";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@embeddr/react-ui/components/select";
+} from "@embeddr/react-ui/components/ui";
 
 import { Moon, Server, Sun } from "lucide-react";
 import type { ApiMode } from "@hooks/useEmbeddrApi";

@@ -62,11 +62,26 @@ def get_api_key() -> str | None:
     )
 
 
-def get_auth_headers() -> dict[str, str]:
+def get_auth_headers(auth_ticket: str | None = None) -> dict[str, str]:
+    headers: dict[str, str] = {}
+
+    ticket_value = auth_ticket
+    if isinstance(ticket_value, (list, tuple)):
+        ticket_value = ticket_value[0] if ticket_value else None
+    if isinstance(ticket_value, dict):
+        ticket_value = ticket_value.get(
+            "auth_ticket") or ticket_value.get("ticket")
+
+    if ticket_value is not None:
+        ticket_text = str(ticket_value).strip()
+        if ticket_text:
+            headers["X-Embeddr-Ticket"] = ticket_text
+
     key = get_api_key()
     if key:
-        return {"X-API-Key": key}
-    return {}
+        headers["X-API-Key"] = key
+
+    return headers
 
 
 def get_upload_mode(default: str = "require") -> str:

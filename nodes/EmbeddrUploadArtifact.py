@@ -16,6 +16,14 @@ def Embeddr_Log(message: str):
     print(f"[Embeddr] {message}")
 
 
+def _has_auth_ticket(value) -> bool:
+    if isinstance(value, (list, tuple)):
+        value = value[0] if value else None
+    if isinstance(value, dict):
+        value = value.get("auth_ticket") or value.get("ticket")
+    return bool(str(value).strip()) if value is not None else False
+
+
 class EmbeddrUploadArtifactNode(io.ComfyNode):
     @classmethod
     def define_schema(cls) -> io.Schema:
@@ -28,6 +36,8 @@ class EmbeddrUploadArtifactNode(io.ComfyNode):
                 io.Image.Input("image"),
                 EmbeddrArtifactID.Input("parent_ids", optional=True,
                                         tooltip="Parent artifact UUIDs"),
+                io.String.Input("auth_ticket", default="",
+                                tooltip="Ephemeral auth ticket for per-user ownership", optional=True),
                 EmbeddrUploadArtifactOptions.Input("options", tooltip="Upload Artifact Options",
                                                    optional=True, display_name="Options"),
             ],
@@ -37,7 +47,7 @@ class EmbeddrUploadArtifactNode(io.ComfyNode):
         )
 
     @classmethod
-    def execute(cls, image, parent_ids: EmbeddrArtifactIDObject = None, options: EmbeddrUploadArtifactOptionsObject = None) -> io.NodeOutput:
+    def execute(cls, image, parent_ids: EmbeddrArtifactIDObject = None, auth_ticket: str = "", options: EmbeddrUploadArtifactOptionsObject = None) -> io.NodeOutput:
         base_url = get_embeddr_base_url()
         upload_mode = get_upload_mode()
         endpoint = f"{base_url}/api/v1/plugins/embeddr-comfyui/upload"
@@ -81,6 +91,7 @@ class EmbeddrUploadArtifactNode(io.ComfyNode):
                             Tags: {options.tags if options else 'none'}
                             Related Artifacts: {options.related_artifact_ids if options else 'none'}
                             Parent IDs: {normalized_parent_ids}
+                            Auth Ticket: {'present' if _has_auth_ticket(auth_ticket) else 'absent'}
                             """)
 
                 storage_provider = None
@@ -137,7 +148,7 @@ class EmbeddrUploadArtifactNode(io.ComfyNode):
                     endpoint,
                     files=files,
                     data=data,
-                    headers=get_auth_headers()
+                    headers=get_auth_headers(auth_ticket=auth_ticket)
                 )
                 response.raise_for_status()
                 res_json = response.json()
@@ -146,6 +157,15 @@ class EmbeddrUploadArtifactNode(io.ComfyNode):
                 results.append(str(art_id))
                 Embeddr_Log(f"Uploaded Artifact: {art_id}")
 
+            except requests.HTTPError as e:
+                body = ""
+                try:
+                    body = e.response.text[:500] if e.response is not None else ""
+                except Exception:
+                    body = ""
+                suffix = f" body={body}" if body else ""
+                Embeddr_Log(
+                    f"Upload failed for batch {batch_idx}: {e}{suffix}")
             except Exception as e:
                 Embeddr_Log(f"Upload failed for batch {batch_idx}: {e}")
                 # We don't crash the whole node, but result might be partial

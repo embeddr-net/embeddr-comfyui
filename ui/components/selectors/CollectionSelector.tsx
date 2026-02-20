@@ -4,10 +4,10 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
-} from "@embeddr/react-ui/components/card";
-import { ScrollArea } from "@embeddr/react-ui/components/scroll-area";
-import { Input } from "@embeddr/react-ui/components/input";
-import { Button } from "@embeddr/react-ui/components/button";
+} from "@embeddr/react-ui/components/ui";
+import { ScrollArea } from "@embeddr/react-ui/components/ui";
+import { Input } from "@embeddr/react-ui/components/ui";
+import { Button } from "@embeddr/react-ui/components/ui";
 import { Folder, Search, Plus } from "lucide-react";
 import type { Collection } from "../../hooks/useEmbeddrCollections";
 

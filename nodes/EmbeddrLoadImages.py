@@ -32,11 +32,12 @@ class EmbeddrLoadImagesNode(io.ComfyNode):
             cls._logger.info("%s", message)
 
     @classmethod
-    def _resolve_artifact_url(cls, base_url: str, artifact_id: str):
+    def _resolve_artifact_url(cls, base_url: str, artifact_id: str, auth_ticket: str = ""):
         resolve_url = f"{base_url}/api/v1/artifacts/{artifact_id}/resolve?variant=original&proxy=1"
         cls._debug("resolving_artifact", artifact_id=artifact_id,
                    resolve_url=resolve_url)
-        res = requests.get(resolve_url, headers=get_auth_headers())
+        res = requests.get(
+            resolve_url, headers=get_auth_headers(auth_ticket=auth_ticket))
         res.raise_for_status()
         data = res.json()
         url = data.get("url")
@@ -82,6 +83,8 @@ class EmbeddrLoadImagesNode(io.ComfyNode):
                 io.Combo.Input("sort_by", options=[
                                "newest", "random"], default="newest"),
                 io.Int.Input("limit", default=5, min=1, max=100),
+                io.String.Input("auth_ticket", default="",
+                                tooltip="Ephemeral auth ticket for per-user access", optional=True),
                 io.Int.Input("seed", default=0,
                              display_name="Seed (Random Sort)"),
             ],
@@ -93,9 +96,10 @@ class EmbeddrLoadImagesNode(io.ComfyNode):
         )
 
     @classmethod
-    def execute(cls, library, collection, sort_by, limit, seed):
+    def execute(cls, library, collection, sort_by, limit, auth_ticket: str = "", seed=0):
         # Cache key based on inputs
-        cache_key = (library, collection, sort_by, limit, seed)
+        cache_key = (library, collection, sort_by,
+                     limit, seed, str(auth_ticket or ""))
         if cache_key in cls._cache:
             return cls._cache[cache_key]
 
@@ -139,7 +143,7 @@ class EmbeddrLoadImagesNode(io.ComfyNode):
                 params["sort"] = "new"
 
             response = requests.get(
-                api_url, params=params, headers=get_auth_headers())
+                api_url, params=params, headers=get_auth_headers(auth_ticket=auth_ticket))
             response.raise_for_status()
             data = response.json()
             items = data.get("items", [])
@@ -159,7 +163,7 @@ class EmbeddrLoadImagesNode(io.ComfyNode):
                 # Fetch Content via Plugin Endpoint
                 # Uses the plugin endpoint we defined to get raw content
                 content_url, content_headers = cls._resolve_artifact_url(
-                    base_url, art_id)
+                    base_url, art_id, auth_ticket)
 
                 cls._debug(
                     "requesting_artifact_content",
@@ -168,7 +172,7 @@ class EmbeddrLoadImagesNode(io.ComfyNode):
                 )
 
                 try:
-                    final_headers = get_auth_headers()
+                    final_headers = get_auth_headers(auth_ticket=auth_ticket)
                     if content_headers:
                         final_headers.update(content_headers)
 

@@ -4,6 +4,7 @@ import { app } from "../../../scripts/app.js";
 import type { ApiMode } from "@types";
 import {
   applyThemePackCss,
+  applyThemePackComfyBridge,
   applyThemePackTokens,
   clearThemePackTokens,
   loadThemePacks,
@@ -58,12 +59,20 @@ export function useEmbeddrSettings({
 
   // Apply theme
   useEffect(() => {
-    const roots = document.querySelectorAll(".embeddr-theme-root");
+    const roots = [
+      document.documentElement,
+      document.body,
+      ...Array.from(
+        document.querySelectorAll<HTMLElement>(".embeddr-theme-root"),
+      ),
+    ];
     roots.forEach((root) => {
       if (theme === "dark") {
         root.classList.add("dark");
+        root.classList.add("dark-theme");
       } else {
         root.classList.remove("dark");
+        root.classList.remove("dark-theme");
       }
     });
 
@@ -90,11 +99,16 @@ export function useEmbeddrSettings({
 
     const applyTheme = async () => {
       if (!apiBase) return;
-      const targets = Array.from(
-        document.querySelectorAll<HTMLElement>(".embeddr-theme-root"),
-      );
+      const targets = [
+        document.documentElement,
+        document.body,
+        ...Array.from(
+          document.querySelectorAll<HTMLElement>(".embeddr-theme-root"),
+        ),
+      ];
 
       clearThemePackTokens(targets, appliedTokenKeysRef.current);
+      applyThemePackComfyBridge(Boolean(themePackId));
 
       if (!themePackId) {
         applyThemePackCss(null);
@@ -108,6 +122,7 @@ export function useEmbeddrSettings({
         const pack = packs.find((item) => item.id === themePackId);
         if (!pack) {
           applyThemePackCss(null);
+          applyThemePackComfyBridge(false);
           appliedTokenKeysRef.current = [];
           return;
         }

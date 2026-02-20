@@ -1,10 +1,10 @@
 import React, { useMemo, useState, useEffect } from "react";
-import { Button } from "@embeddr/react-ui/components/button";
-import { ScrollArea } from "@embeddr/react-ui/components/scroll-area";
-import { Badge } from "@embeddr/react-ui/components/badge";
-import { Separator } from "@embeddr/react-ui/components/separator";
-import { Skeleton } from "@embeddr/react-ui/components/skeleton";
-import { EmbeddrApiClient } from "@embeddr/api";
+import { Button } from "@embeddr/react-ui/components/ui";
+import { ScrollArea } from "@embeddr/react-ui/components/ui";
+import { Badge } from "@embeddr/react-ui/components/ui";
+import { Separator } from "@embeddr/react-ui/components/ui";
+import { Skeleton } from "@embeddr/react-ui/components/ui";
+import { EmbeddrApiClient } from "@embeddr/client-typescript";
 import { AuthorizedImage } from "@components/ui/AuthorizedImage";
 
 import {

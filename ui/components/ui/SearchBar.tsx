@@ -1,14 +1,14 @@
 import React from "react";
-import { Input } from "@embeddr/react-ui/components/input";
-import { Button } from "@embeddr/react-ui/components/button";
-import { Spinner } from "@embeddr/react-ui/components/spinner";
+import { Input } from "@embeddr/react-ui/components/ui";
+import { Button } from "@embeddr/react-ui/components/ui";
+import { Spinner } from "@embeddr/react-ui/components/ui";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@embeddr/react-ui/components/select";
+} from "@embeddr/react-ui/components/ui";
 import { Globe, ScanEyeIcon, Search, User } from "lucide-react";
 import type { ApiMode, LibraryPath } from "@types";
 import type { Collection } from "../../hooks/useEmbeddrCollections";

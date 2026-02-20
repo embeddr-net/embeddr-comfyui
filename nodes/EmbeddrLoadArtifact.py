@@ -31,11 +31,12 @@ class EmbeddrLoadArtifactNode(io.ComfyNode):
             cls._logger.info("%s", message)
 
     @classmethod
-    def _resolve_artifact_url(cls, base_url: str, artifact_id: str):
+    def _resolve_artifact_url(cls, base_url: str, artifact_id: str, auth_ticket: str = ""):
         resolve_url = f"{base_url}/api/v1/artifacts/{artifact_id}/resolve?variant=original&proxy=1"
         cls._debug("resolving_artifact", artifact_id=artifact_id,
                    resolve_url=resolve_url)
-        res = requests.get(resolve_url, headers=get_auth_headers())
+        res = requests.get(
+            resolve_url, headers=get_auth_headers(auth_ticket=auth_ticket))
         res.raise_for_status()
         data = res.json()
         url = data.get("url")
@@ -73,6 +74,8 @@ class EmbeddrLoadArtifactNode(io.ComfyNode):
                                 tooltip="Manual UUID string (used if input not connected)", default=""),
                 EmbeddrArtifactID.Input("artifact_id",
                                         tooltip="UUID of the artifact to load", optional=True),
+                io.String.Input("auth_ticket", default="",
+                                tooltip="Ephemeral auth ticket for per-user access", optional=True),
                 io.Boolean.Input("use_cache", default=True)
             ],
             outputs=[
@@ -84,7 +87,7 @@ class EmbeddrLoadArtifactNode(io.ComfyNode):
         )
 
     @classmethod
-    def execute(cls, use_cache, artifact_id=None, manual_artifact_id=None):
+    def execute(cls, use_cache, artifact_id=None, manual_artifact_id=None, auth_ticket: str = ""):
         # Resolve artifact_id from connection or manual input
         resolved_id = ""
 
@@ -111,8 +114,10 @@ class EmbeddrLoadArtifactNode(io.ComfyNode):
                 EmbeddrArtifactInfoObject(data={})
             )
 
-        if use_cache and resolved_id in cls._cache:
-            image, mask, info = cls._cache[resolved_id]
+        cache_key = (resolved_id, str(auth_ticket or ""))
+
+        if use_cache and cache_key in cls._cache:
+            image, mask, info = cls._cache[cache_key]
             return io.NodeOutput(image, mask, EmbeddrArtifactIDObject(artifact_id=resolved_id), info)
 
         try:
@@ -123,14 +128,15 @@ class EmbeddrLoadArtifactNode(io.ComfyNode):
 
             # 1. Fetch JSON metadata first
             meta_url = f"{base_url}/api/v1/artifacts/{resolved_id}"
-            meta_res = requests.get(meta_url, headers=get_auth_headers())
+            meta_res = requests.get(
+                meta_url, headers=get_auth_headers(auth_ticket=auth_ticket))
             meta_res.raise_for_status()
             artifact_data = meta_res.json()
             info_obj = EmbeddrArtifactInfoObject(data=artifact_data)
 
             # 2. Resolve content
             endpoint, content_headers = cls._resolve_artifact_url(
-                base_url, resolved_id
+                base_url, resolved_id, auth_ticket
             )
 
             cls._debug(
@@ -140,7 +146,7 @@ class EmbeddrLoadArtifactNode(io.ComfyNode):
             )
 
             # Merge auth headers with any resolved headers (e.g. S3 signed headers or similar)
-            final_headers = get_auth_headers()
+            final_headers = get_auth_headers(auth_ticket=auth_ticket)
             if content_headers:
                 final_headers.update(content_headers)
 
@@ -166,7 +172,7 @@ class EmbeddrLoadArtifactNode(io.ComfyNode):
                 mask = torch.zeros((64, 64), dtype=torch.float32, device="cpu")
 
             if use_cache:
-                cls._cache[resolved_id] = (image, mask, info_obj)
+                cls._cache[cache_key] = (image, mask, info_obj)
 
             return io.NodeOutput(image, mask, EmbeddrArtifactIDObject(artifact_id=resolved_id), info_obj, ui=ui.PreviewImage(image))
 

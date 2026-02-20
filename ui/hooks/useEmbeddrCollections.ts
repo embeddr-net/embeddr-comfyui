@@ -1,5 +1,5 @@
 import { useState, useCallback } from "react";
-import type { EmbeddrApiClient } from "@embeddr/api";
+import type { EmbeddrApiClient } from "@embeddr/client-typescript";
 
 export interface Collection {
   id: string;

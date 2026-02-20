@@ -5,7 +5,7 @@ import {
   TabsContent,
   TabsList,
   TabsTrigger,
-} from "@embeddr/react-ui/components/tabs";
+} from "@embeddr/react-ui/components/ui";
 import { useExternalNav, useImageDialog } from "@embeddr/react-ui";
 import {
   GlobeIcon,
@@ -14,10 +14,11 @@ import {
   Settings,
   LayoutTemplate,
 } from "lucide-react";
-import { Button } from "@embeddr/react-ui/components/button";
+import { Button } from "@embeddr/react-ui/components/ui";
 import { useEmbeddrApi } from "@hooks/useEmbeddrApi";
 import { SettingsForm } from "../tabs/SettingsForm";
 import { ExploreTab } from "../tabs/ExploreTab";
+import { PromptTab } from "../tabs/PromptTab";
 
 export default function EmbeddrPanel() {
   const {
@@ -178,6 +179,16 @@ export default function EmbeddrPanel() {
             configLoaded={configLoaded}
             activeTab={activeTab}
             apiKey={apiKey}
+          />
+        </TabsContent>
+
+        <TabsContent value="prompt" className="flex-1 p-0 m-0 flex flex-col">
+          <PromptTab
+            endpoint={endpoint}
+            apiKey={apiKey}
+            onOpenDocs={() =>
+              openExternal(`${endpoint.replace(/\/+$/, "")}/docs`)
+            }
           />
         </TabsContent>
 

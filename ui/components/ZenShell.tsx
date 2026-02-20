@@ -11,6 +11,9 @@ import {
   type ZenWindowRendererProps,
   EmbeddrProvider,
   type PluginLoaderAdapter,
+  CoreUIEventBridge,
+  ZenWebSocketProvider,
+  globalEventBus,
 } from "@embeddr/zen-shell";
 import { useEmbeddrApi } from "../hooks/useEmbeddrApi";
 import {
@@ -23,8 +26,15 @@ import {
   RefreshCw,
   LayoutTemplate,
 } from "lucide-react";
-import { Button } from "@embeddr/react-ui/components/button";
+import { Button } from "@embeddr/react-ui/components/ui";
 import { cn } from "@embeddr/react-ui";
+
+const PANEL_SAFE_AREA = { top: 8, right: 8, bottom: 8, left: 8 };
+
+const clamp = (value: number, min: number, max: number) => {
+  if (max < min) return min;
+  return Math.min(Math.max(value, min), max);
+};
 
 // Helper to resolve component ID to plugin and component name
 function resolveComponentId(fullId: string, plugins: Record<string, any>) {
@@ -148,6 +158,7 @@ const CustomWindowRenderer = React.memo((props: ZenWindowRendererProps) => {
                     componentName={resolved.componentName}
                     api={pluginApi}
                     windowId={id}
+                    isActive={isActive}
                     {...windowState.props}
                   />
                 </PluginErrorBoundary>
@@ -220,16 +231,30 @@ function BasicWindowPanel({
     };
   };
 
-  const handlePointerMove = useCallback((event: PointerEvent) => {
-    if (!dragRef.current || dragRef.current.pointerId !== event.pointerId) {
-      return;
-    }
-    const next = {
-      x: event.clientX - dragRef.current.startX,
-      y: event.clientY - dragRef.current.startY,
-    };
-    setPos(next);
-  }, []);
+  const handlePointerMove = useCallback(
+    (event: PointerEvent) => {
+      if (!dragRef.current || dragRef.current.pointerId !== event.pointerId) {
+        return;
+      }
+      const maxX = window.innerWidth - dimensions.width - PANEL_SAFE_AREA.right;
+      const maxY =
+        window.innerHeight - dimensions.height - PANEL_SAFE_AREA.bottom;
+      const next = {
+        x: clamp(
+          event.clientX - dragRef.current.startX,
+          PANEL_SAFE_AREA.left,
+          maxX,
+        ),
+        y: clamp(
+          event.clientY - dragRef.current.startY,
+          PANEL_SAFE_AREA.top,
+          maxY,
+        ),
+      };
+      setPos(next);
+    },
+    [dimensions.height, dimensions.width],
+  );
 
   const handlePointerUp = useCallback(
     (event: PointerEvent) => {
@@ -261,19 +286,31 @@ function BasicWindowPanel({
       ) {
         return;
       }
+      const minWidth = 240;
+      const minHeight = 180;
+      const maxWidth = Math.max(
+        minWidth,
+        window.innerWidth - pos.x - PANEL_SAFE_AREA.right,
+      );
+      const maxHeight = Math.max(
+        minHeight,
+        window.innerHeight - pos.y - PANEL_SAFE_AREA.bottom,
+      );
       const next = {
-        width: Math.max(
-          240,
+        width: clamp(
           resizeRef.current.startW + (event.clientX - resizeRef.current.startX),
+          minWidth,
+          maxWidth,
         ),
-        height: Math.max(
-          180,
+        height: clamp(
           resizeRef.current.startH + (event.clientY - resizeRef.current.startY),
+          minHeight,
+          maxHeight,
         ),
       };
       setDimensions(next);
     },
-    [dimensions.width, dimensions.height],
+    [pos.x, pos.y],
   );
 
   const handleResizeUp = useCallback(
@@ -302,6 +339,43 @@ function BasicWindowPanel({
       window.removeEventListener("pointerup", handleResizeUp);
     };
   }, [handlePointerMove, handlePointerUp, handleResizeMove, handleResizeUp]);
+
+  useEffect(() => {
+    const ensureInBounds = () => {
+      const maxX = window.innerWidth - dimensions.width - PANEL_SAFE_AREA.right;
+      const maxY =
+        window.innerHeight - dimensions.height - PANEL_SAFE_AREA.bottom;
+      setPos((prev) => ({
+        x: clamp(prev.x, PANEL_SAFE_AREA.left, maxX),
+        y: clamp(prev.y, PANEL_SAFE_AREA.top, maxY),
+      }));
+      setDimensions((prev) => {
+        const minWidth = 240;
+        const minHeight = 180;
+        const constrainedWidth = clamp(
+          prev.width,
+          minWidth,
+          Math.max(minWidth, window.innerWidth - pos.x - PANEL_SAFE_AREA.right),
+        );
+        const constrainedHeight = clamp(
+          prev.height,
+          minHeight,
+          Math.max(
+            minHeight,
+            window.innerHeight - pos.y - PANEL_SAFE_AREA.bottom,
+          ),
+        );
+        return {
+          width: constrainedWidth,
+          height: constrainedHeight,
+        };
+      });
+    };
+
+    ensureInBounds();
+    window.addEventListener("resize", ensureInBounds);
+    return () => window.removeEventListener("resize", ensureInBounds);
+  }, [dimensions.height, dimensions.width, pos.x, pos.y]);
 
   return (
     <div
@@ -444,7 +518,30 @@ function createEmbeddrApiAdapter(input: EmbeddrApiAdapterInput): EmbeddrAPI {
     return first;
   };
 
-  const eventTarget = new EventTarget();
+  const executionStore = {
+    pipelines: [],
+    selectedPipeline: null,
+    runs: [],
+    isRunning: false,
+    run: async () => {},
+    setPipelineInput: () => {},
+    selectPipeline: () => {},
+  };
+
+  const modelCatalog = {
+    list: async (input: {
+      category: string;
+      page?: number;
+      limit?: number;
+    }) => ({
+      items: [],
+      total: 0,
+      page: input.page || 1,
+      pages: 1,
+      category: input.category,
+    }),
+    listSamplers: async () => ({ samplers: [], schedulers: [] }),
+  };
 
   const api: EmbeddrAPI = {
     stores: {
@@ -452,15 +549,7 @@ function createEmbeddrApiAdapter(input: EmbeddrApiAdapterInput): EmbeddrAPI {
         selectedImage: null,
         selectImage: () => {},
       },
-      generation: {
-        workflows: [],
-        selectedWorkflow: null,
-        generations: [],
-        isGenerating: false,
-        generate: async () => {},
-        setWorkflowInput: () => {},
-        selectWorkflow: () => {},
-      },
+      execution: executionStore,
     },
     ui: {
       activePanelId: null,
@@ -615,25 +704,19 @@ function createEmbeddrApiAdapter(input: EmbeddrApiAdapterInput): EmbeddrAPI {
       },
     } as any,
     events: {
-      on: (event, listener) => {
-        const handler = (e: Event) => listener((e as CustomEvent).detail);
-        eventTarget.addEventListener(event, handler as EventListener);
-        return () =>
-          eventTarget.removeEventListener(event, handler as EventListener);
-      },
-      off: (event, listener) => {
-        eventTarget.removeEventListener(event, listener as EventListener);
-      },
-      emit: (event, payload) => {
-        eventTarget.dispatchEvent(new CustomEvent(event, { detail: payload }));
-      },
+      on: (event, listener) =>
+        globalEventBus.on(
+          event as string,
+          listener as (...args: any[]) => void,
+        ),
+      off: (event, listener) =>
+        globalEventBus.off(
+          event as string,
+          listener as (...args: any[]) => void,
+        ),
+      emit: (event, payload) => globalEventBus.emit(event as string, payload),
     },
-    comfy: {
-      getLoras: async () => ({ items: [], total: 0, page: 1, pages: 1 }),
-      getCheckpoints: async () => ({ items: [], total: 0, page: 1, pages: 1 }),
-      getEmbeddings: async () => ({ items: [], total: 0, page: 1, pages: 1 }),
-      getSamplers: async () => ({ samplers: [], schedulers: [] }),
-    },
+    models: modelCatalog,
     windows: {
       open: (id: string, title: string, componentId: string, props?: any) =>
         useZenWindowStore.getState().openWindow({
@@ -734,15 +817,29 @@ export function ZenShell() {
 
   const { plugins, knownPlugins } = usePluginRegistry();
   const spawnWindow = useZenWindowStore((s) => s.spawnWindow);
+  const setPanelConstraints = useZenWindowStore((s) => s.setPanelConstraints);
+  const [pluginReloadTick, setPluginReloadTick] = useState(0);
   const embeddrApi = useMemo(
     () => createEmbeddrApiAdapter(api),
     [api.endpoint, api.apiKey, api.apiClient],
+  );
+  const wsBackendUrl = useMemo(
+    () => (api.endpoint || "http://localhost:8003").replace(/\/$/, ""),
+    [api.endpoint],
   );
 
   useEffect(() => {
     console.log("[ZenShell] Mounted");
     return () => console.log("[ZenShell] Unmounted");
   }, []);
+
+  useEffect(() => {
+    setPanelConstraints({
+      enabled: true,
+      safeArea: PANEL_SAFE_AREA,
+      snapThreshold: 24,
+    });
+  }, [setPanelConstraints]);
 
   const adapter = useMemo<PluginLoaderAdapter>(() => {
     console.log("[ZenShell] Recreating adapter");
@@ -872,7 +969,10 @@ export function ZenShell() {
 
   // We always render the Manager (so windows exist), but maybe hide the Dock
   return (
-    <>
+    <ZenWebSocketProvider
+      backendUrl={wsBackendUrl}
+      apiKey={api.apiKey || undefined}
+    >
       <div
         style={{
           position: "fixed",
@@ -884,7 +984,9 @@ export function ZenShell() {
         {/* The Window Manager Layer */}
         <div style={{ width: "100vw", height: "100vh" }}>
           <EmbeddrProvider api={embeddrApi}>
+            <CoreUIEventBridge api={embeddrApi} />
             <ZenPanelManagerCore
+              key={`zen-panel-manager-${pluginReloadTick}`}
               useWindowStore={useZenWindowStore}
               WindowRenderer={CustomWindowRenderer}
             />
@@ -1012,7 +1114,10 @@ export function ZenShell() {
                   variant="ghost"
                   size="sm"
                   className="w-full mt-4 text-xs text-muted-foreground hover:text-foreground"
-                  onClick={() => loadExternalPlugins({ adapter })}
+                  onClick={async () => {
+                    await loadExternalPlugins({ adapter });
+                    setPluginReloadTick((prev) => prev + 1);
+                  }}
                 >
                   <RefreshCw className="w-3 h-3 mr-2" /> Reload Plugins
                 </Button>
@@ -1021,6 +1126,6 @@ export function ZenShell() {
           )}
         </div>
       )}
-    </>
+    </ZenWebSocketProvider>
   );
 }

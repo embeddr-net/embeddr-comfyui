@@ -1,8 +1,9 @@
 import React, { useEffect, useRef } from "react";
-import { ScrollArea } from "@embeddr/react-ui/components/scroll-area";
+import { ScrollArea } from "@embeddr/react-ui/components/ui";
 import { Eye, PenLineIcon } from "lucide-react";
-import { Button } from "@embeddr/react-ui/components/button";
+import { Button } from "@embeddr/react-ui/components/ui";
 import { cn } from "@embeddr/react-ui";
+import { EmbeddrDnDTypes } from "@embeddr/react-ui";
 import { AuthorizedImage } from "./AuthorizedImage";
 
 import type { PromptImageRead } from "@hooks/useEmbeddrApi";
@@ -59,11 +60,44 @@ export function ImageGrid({
     };
   }, [hasMore, loading, onLoadMore]);
 
-  const handleDragStart = (e: React.DragEvent, image: any) => {
+  const handleDragStart = (e: React.DragEvent, image: PromptImageRead) => {
+    const artifactId = image.id.toString();
+    const previewUrl = image.thumb_url || image.image_url;
+    const payload = {
+      id: artifactId,
+      artifact_id: artifactId,
+      type: "image",
+      type_name: "image",
+      prompt: image.prompt,
+      image_url: image.image_url,
+      thumb_url: image.thumb_url,
+      preview_url: previewUrl,
+      path: image.path,
+      created_at: image.created_at,
+      width: image.width,
+      height: image.height,
+      metadata: {
+        prompt: image.prompt,
+        filename: image.filename,
+      },
+    };
+
+    e.dataTransfer.effectAllowed = "copy";
     e.dataTransfer.setData("text/plain", image.image_url);
     e.dataTransfer.setData("text/uri-list", image.image_url);
-    e.dataTransfer.setData("embeddr/id", image.id.toString());
-    e.dataTransfer.setData("embeddr/json", JSON.stringify(image));
+
+    e.dataTransfer.setData(EmbeddrDnDTypes.ARTIFACT_ID, artifactId);
+    e.dataTransfer.setData(EmbeddrDnDTypes.IMAGE_ID, artifactId);
+    e.dataTransfer.setData(EmbeddrDnDTypes.ARTIFACT_TYPE, "image");
+    e.dataTransfer.setData(EmbeddrDnDTypes.IMAGE_URL, image.image_url);
+    e.dataTransfer.setData(EmbeddrDnDTypes.PREVIEW_URL, previewUrl);
+    e.dataTransfer.setData(EmbeddrDnDTypes.ARTIFACT, JSON.stringify(payload));
+    if (image.path) {
+      e.dataTransfer.setData(EmbeddrDnDTypes.ARTIFACT_PATH, image.path);
+    }
+
+    e.dataTransfer.setData("embeddr/id", artifactId);
+    e.dataTransfer.setData("embeddr/json", JSON.stringify(payload));
   };
 
   return (

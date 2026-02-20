@@ -4,7 +4,7 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
-} from "@embeddr/react-ui/components/dialog";
+} from "@embeddr/react-ui/components/ui";
 import { useImageDialog } from "@embeddr/react-ui";
 import { ExploreTab } from "./tabs/ExploreTab";
 import { CollectionSelector } from "./selectors/CollectionSelector";
