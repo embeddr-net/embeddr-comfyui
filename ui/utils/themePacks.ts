@@ -363,10 +363,25 @@ html[data-embeddr-theme-pack] .comfyui-body-bottom {
   border-color: var(--component-node-border, var(--border)) !important;
 }
 
+html[data-embeddr-theme-pack] .lg-node {
+  border-radius: var(--radius-2xl) !important;
+}
+
 html[data-embeddr-theme-pack] .lg-node-header {
   background: var(--node-component-header-surface, var(--component-node-background, var(--card))) !important;
   color: var(--node-component-slot-text, var(--foreground)) !important;
   border-color: var(--component-node-border, var(--border)) !important;
+  border-radius: var(--radius-2xl) var(--radius-2xl) 0 0 !important;
+}
+
+html[data-embeddr-theme-pack] .lg-node > [data-testid^="node-body-"] {
+  background: var(--component-node-background, var(--card, var(--background))) !important;
+  border-radius: 0 0 var(--radius-2xl) var(--radius-2xl) !important;
+}
+
+html[data-embeddr-theme-pack] [data-testid="node-state-outline-overlay"] {
+  border-color: var(--primary-background, var(--primary)) !important;
+  border-radius: calc(var(--radius-2xl) + 3px) !important;
 }
 
 html[data-embeddr-theme-pack] .text-node-component-slot-text,

@@ -1,7 +1,8 @@
-import React from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { Input } from "@embeddr/react-ui/components/ui";
 import { Label } from "@embeddr/react-ui/components/ui";
 import { Button } from "@embeddr/react-ui/components/ui";
+import { Badge } from "@embeddr/react-ui/components/ui";
 import { Slider } from "@embeddr/react-ui/components/ui";
 import { Switch } from "@embeddr/react-ui/components/ui";
 import {
@@ -12,9 +13,222 @@ import {
   SelectValue,
 } from "@embeddr/react-ui/components/ui";
 
-import { Moon, Server, Sun } from "lucide-react";
+import { Moon, Server, Sun, Shield, LogOut, User } from "lucide-react";
+import { createEmbeddrOAuth } from "@embeddr/client-typescript";
+import { proxyFetch } from "../../utils/proxyFetch";
 import type { ApiMode } from "@hooks/useEmbeddrApi";
 import { useThemePacks } from "@hooks/useThemePacks";
+
+const OAUTH_CLIENT_ID = "embeddr:comfyui";
+
+/* ── Embeddr Connection (OAuth or manual key) ── */
+
+function EmbeddrConnectionSection({
+  endpoint,
+  apiKey,
+  setApiKey,
+}: {
+  endpoint: string;
+  apiKey: string;
+  setApiKey?: (key: string) => void;
+}) {
+  const [profile, setProfile] = useState<{
+    username: string;
+    display_name: string | null;
+    operator_name: string | null;
+    instance_name: string;
+  } | null>(null);
+  const [checking, setChecking] = useState(false);
+  const [showManualKey, setShowManualKey] = useState(false);
+
+  // Check connection on mount and when apiKey changes
+  const checkConnection = useCallback(async () => {
+    if (!apiKey) {
+      setProfile(null);
+      return;
+    }
+    setChecking(true);
+    try {
+      const apiBase = endpoint.replace(/\/+$/, "");
+      const [whoamiRes, publicRes] = await Promise.all([
+        proxyFetch(`${apiBase}/api/security/whoami`),
+        proxyFetch(`${apiBase}/api/system/public`),
+      ]);
+      if (whoamiRes.ok) {
+        const data = await whoamiRes.json();
+        let instanceName = "Embeddr";
+        if (publicRes.ok) {
+          const pub = await publicRes.json();
+          instanceName = pub.instance?.name || instanceName;
+        }
+        setProfile({
+          username: data.user?.username || "",
+          display_name: data.user?.display_name || null,
+          operator_name: data.operator?.display_name || data.operator?.name || null,
+          instance_name: instanceName,
+        });
+      } else {
+        setProfile(null);
+      }
+    } catch {
+      setProfile(null);
+    } finally {
+      setChecking(false);
+    }
+  }, [apiKey]);
+
+  useEffect(() => {
+    checkConnection();
+  }, [checkConnection]);
+
+  // Handle OAuth callback
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const code = params.get("code");
+    if (!code) return;
+
+    const oauth = createEmbeddrOAuth({
+      embeddrUrl: endpoint,
+      clientId: OAUTH_CLIENT_ID,
+    });
+
+    oauth
+      .handleCallback(window.location.search)
+      .then((token) => {
+        if (setApiKey) setApiKey(token.access_token);
+        localStorage.setItem("embeddr_api_key", token.access_token);
+        // Save to server config too
+        fetch("/embeddr/config", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ api_key: token.access_token }),
+        }).catch(() => {});
+        // Clean URL
+        window.history.replaceState({}, "", window.location.pathname);
+      })
+      .catch((e) => {
+        console.error("OAuth callback failed:", e);
+      });
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const handleOAuthConnect = async () => {
+    console.log("[Embeddr] OAuth connect clicked", { endpoint });
+    try {
+      const oauth = createEmbeddrOAuth({
+        embeddrUrl: endpoint,
+        clientId: OAUTH_CLIENT_ID,
+      });
+      console.log("[Embeddr] Starting OAuth flow to", endpoint);
+      await oauth.startAuthFlow({
+        scopes: [
+          "artifacts:read",
+          "artifacts:write",
+          "collections:read",
+          "collections:write",
+          "executions:read",
+          "executions:write",
+          "plugins:read",
+          "config:read",
+          "themes:read",
+          "lotus:dispatch",
+          "lotus:list",
+        ],
+        redirectUri: window.location.origin + window.location.pathname,
+      });
+    } catch (e) {
+      console.error("[Embeddr] OAuth flow error:", e);
+    }
+  };
+
+  const handleDisconnect = () => {
+    if (setApiKey) setApiKey("");
+    localStorage.removeItem("embeddr_api_key");
+    setProfile(null);
+    fetch("/embeddr/config", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ api_key: "" }),
+    }).catch(() => {});
+  };
+
+  const displayName = profile?.display_name || profile?.username || "";
+  const initials = displayName.slice(0, 2).toUpperCase() || "?";
+
+  return (
+    <div className="space-y-2">
+      <Label>Embeddr Connection</Label>
+      {profile ? (
+        <div className="rounded-md border p-3 space-y-2">
+          <div className="flex items-center gap-2.5">
+            <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+              <span className="text-[10px] font-semibold text-primary">
+                {initials}
+              </span>
+            </div>
+            <div className="min-w-0 flex-1">
+              <div className="text-xs font-medium truncate">{displayName}</div>
+              <div className="text-[10px] text-muted-foreground truncate">
+                {profile.operator_name && (
+                  <span>{profile.operator_name} &middot; </span>
+                )}
+                {profile.instance_name}
+              </div>
+            </div>
+            <Badge variant="outline" className="text-[9px] shrink-0">
+              connected
+            </Badge>
+          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            className="w-full text-xs"
+            onClick={handleDisconnect}
+          >
+            <LogOut className="h-3 w-3 mr-1.5" />
+            Disconnect
+          </Button>
+        </div>
+      ) : (
+        <div className="rounded-md border border-dashed p-3 space-y-2">
+          <Button
+            className="w-full"
+            onClick={handleOAuthConnect}
+            disabled={checking || !endpoint}
+          >
+            <Shield className="h-4 w-4 mr-2" />
+            {checking ? "Checking..." : "Connect to Embeddr"}
+          </Button>
+          <p className="text-[10px] text-muted-foreground text-center">
+            Opens Embeddr to approve access for this ComfyUI instance.
+          </p>
+          {showManualKey && (
+            <div className="space-y-1 pt-1 border-t">
+              <p className="text-[10px] text-muted-foreground">
+                Or enter an API key manually:
+              </p>
+              <Input
+                type="password"
+                placeholder="em_..."
+                value={apiKey}
+                onChange={(e) => setApiKey && setApiKey(e.target.value)}
+                className="h-7 text-xs"
+              />
+            </div>
+          )}
+          {!showManualKey && (
+            <button
+              type="button"
+              className="text-[10px] text-muted-foreground underline w-full text-center"
+              onClick={() => setShowManualKey(true)}
+            >
+              Use API key instead
+            </button>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
 
 interface SettingsFormProps {
   endpoint: string;
@@ -91,19 +305,11 @@ export function SettingsForm({
         </p>
       </div>
 
-      <div className="space-y-2">
-        <Label htmlFor="api-key">API Key</Label>
-        <Input
-          id="api-key"
-          type="password"
-          placeholder="Enter API Key (optional)"
-          value={apiKey}
-          onChange={(e) => setApiKey && setApiKey(e.target.value)}
-        />
-        <p className="text-xs text-muted-foreground">
-          Optional API Key for authentication (X-API-Key).
-        </p>
-      </div>
+      <EmbeddrConnectionSection
+        endpoint={endpoint}
+        apiKey={apiKey}
+        setApiKey={setApiKey}
+      />
 
       <div className="space-y-2">
         <Label htmlFor="grid-size">Grid Columns</Label>

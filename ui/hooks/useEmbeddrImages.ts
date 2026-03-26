@@ -4,6 +4,34 @@ import type { EmbeddrApiClient } from "@embeddr/client-typescript";
 import { app } from "../../../scripts/app.js";
 import type { ApiMode, PromptImageRead } from "@types";
 
+const PAGE_SIZE = 20;
+
+const proxifyImageUrl = (url: string) =>
+  url.startsWith("http")
+    ? `/embeddr/proxy?url=${encodeURIComponent(url)}`
+    : url;
+
+const normalizePromptImage = (
+  item: any,
+  getContentUrl: (id: string | number) => string,
+  getPreviewUrl: (id: string | number) => string,
+): PromptImageRead => {
+  const id = item.id;
+  const metadata = item.metadata_json || {};
+  return {
+    id,
+    prompt: metadata.prompt || metadata.filename || metadata.name || "Untitled",
+    image_url: proxifyImageUrl(getContentUrl(id)),
+    thumb_url: proxifyImageUrl(getPreviewUrl(id)),
+    created_at: item.created_at || new Date().toISOString(),
+    like_count: 0,
+    liked_by_me: false,
+    width: metadata.width || 0,
+    height: metadata.height || 0,
+    filename: metadata.filename,
+  };
+};
+
 interface UseEmbeddrImagesProps {
   apiBase: string;
   mode: ApiMode;
@@ -60,7 +88,7 @@ export function useEmbeddrImages({
         }
 
         const currentPage = reset ? 1 : pageRef.current;
-        const offset = (currentPage - 1) * 20;
+        const offset = (currentPage - 1) * PAGE_SIZE;
 
         let baseUrl = apiBase;
         if (baseUrl.endsWith("/")) baseUrl = baseUrl.slice(0, -1);
@@ -75,6 +103,54 @@ export function useEmbeddrImages({
         let url = "";
         let method = "GET";
         let body: string | undefined = undefined;
+        const fetchWithProxy = async (targetUrl: string, init?: RequestInit) => {
+          const isComfyEnv = true;
+          if (isComfyEnv && targetUrl.startsWith("http")) {
+            return fetch(`/embeddr/proxy?url=${encodeURIComponent(targetUrl)}`, init);
+          }
+          return fetch(targetUrl, init);
+        };
+
+        const fetchArtifactsByIds = async (ids: Array<string | number>) => {
+          if (!ids.length) return [];
+          if (apiClient) {
+            const listed = await apiClient.artifacts.list({
+              ids: ids.map((id) => String(id)),
+              limit: ids.length,
+              media_type: "image",
+            });
+            return Array.isArray(listed.items) ? listed.items : [];
+          }
+
+          const params = new URLSearchParams();
+          params.set("limit", String(ids.length));
+          params.set("media_type", "image");
+          ids.forEach((id) => params.append("ids", String(id)));
+          const listedResponse = await fetchWithProxy(`${baseUrl}/artifacts/?${params.toString()}`, {
+            method: "GET",
+            headers,
+          });
+          if (!listedResponse.ok) {
+            throw new Error(`Failed to fetch artifacts: ${listedResponse.status}`);
+          }
+          const listed = await listedResponse.json();
+          return Array.isArray(listed?.items) ? listed.items : [];
+        };
+
+        const mapArtifacts = (artifactItems: Array<any>) =>
+          artifactItems.map((item) =>
+            normalizePromptImage(
+              item,
+              (id) =>
+                apiClient
+                  ? apiClient.artifacts.getContentUrl(id)
+                  : `${baseUrl}/artifacts/${id}/content`,
+              (id) =>
+                apiClient
+                  ? apiClient.artifacts.getPreviewUrl(id, "thumbnail")
+                  : `${baseUrl}/artifacts/${id}/content?preview_type=thumbnail`,
+            ),
+          );
 
         // V2 API Logic
         if (currentSimilarId) {
@@ -83,7 +159,9 @@ export function useEmbeddrImages({
           method = "POST";
           body = JSON.stringify({
             artifact_id: currentSimilarId.toString(),
-            limit: 20,
+            limit: PAGE_SIZE,
+            offset,
+            skip: offset,
           });
         } else if (searchQuery) {
           // Use Embeddr Search Plugin (semantic text search)
@@ -91,49 +169,21 @@ export function useEmbeddrImages({
           method = "POST";
           body = JSON.stringify({
             query: searchQuery,
-            limit: 20,
+            limit: PAGE_SIZE,
+            offset,
+            skip: offset,
           });
         } else if (apiClient) {
           // Use apiClient for listing items, which now uses proxyFetch internally through constructor
           const list = await apiClient.artifacts.list({
-            limit: 20,
+            limit: PAGE_SIZE,
             offset,
-            type_name: "image",
+            media_type: "image",
             sort: "new",
             library_id: libraryId ? String(libraryId) : undefined,
             collection_id: collectionId || undefined,
           });
-
-          // Helper to ensure urls are proxied even if returned from client helpers
-          // The client's getContentUrl returns raw url, we must wrap it if display is needed
-          const proxify = (u: string) =>
-            u.startsWith("http")
-              ? `/embeddr/proxy?url=${encodeURIComponent(u)}`
-              : u;
-
-          const items = list.items || [];
-          const mapped = items.map((item: any) => {
-            const id = item.id;
-            const metadata = item.metadata_json || {};
-
-            const rawImageUrl = apiClient.artifacts.getContentUrl(id);
-            const rawThumbUrl = apiClient.artifacts.getPreviewUrl(
-              id,
-              "thumbnail",
-            );
-
-            return {
-              id: id,
-              prompt: metadata.prompt || metadata.filename || "Untitled",
-              image_url: proxify(rawImageUrl),
-              thumb_url: proxify(rawThumbUrl),
-              created_at: item.created_at || new Date().toISOString(),
-              like_count: 0,
-              liked_by_me: false,
-              width: metadata.width || 0,
-              height: metadata.height || 0,
-            };
-          });
+          const mapped = mapArtifacts(list.items || []);
 
           if (reset) {
             setImages(mapped);
@@ -143,11 +193,21 @@ export function useEmbeddrImages({
             pageRef.current = currentPage + 1;
           }
 
-          setHasMore(offset + mapped.length < list.total);
+          const total =
+            typeof list.count === "number"
+              ? list.count
+              : typeof list.total === "number"
+                ? list.total
+                : undefined;
+          setHasMore(
+            typeof total === "number"
+              ? offset + mapped.length < total
+              : mapped.length === PAGE_SIZE,
+          );
           return;
         } else {
           // List Artifacts (No Client Fallback - Should rarely happen if hook setup correct)
-          url = `${baseUrl}/artifacts/?type_name=image&sort=new&limit=20&offset=${offset}`;
+          url = `${baseUrl}/artifacts/?media_type=image&sort=new&limit=${PAGE_SIZE}&offset=${offset}`;
           if (libraryId) {
             url += `&library_id=${libraryId}`;
           }
@@ -156,27 +216,17 @@ export function useEmbeddrImages({
           }
         }
 
-        let response: Response;
-
-        // Use Proxy for all requests to avoid CORS/Auth issues in ComfyUI environment
-        // The backend proxy injects the API key from server-side config
-        const isComfyEnv = true; // We are in ComfyUI extension
-        if (isComfyEnv && url.startsWith("http")) {
-          const proxyUrl = `/embeddr/proxy?url=${encodeURIComponent(url)}`;
-          response = await fetch(proxyUrl, { method, headers, body });
-        } else {
-          response = await fetch(url, { method, headers, body });
-        }
+        let response = await fetchWithProxy(url, { method, headers, body });
 
         // Fallback for Similar Search if plugin missing (404)
         if (!response.ok && currentSimilarId && response.status === 404) {
           console.warn(
             "Embeddr Search plugin not found, falling back to latest",
           );
-          url = `${baseUrl}/artifacts/?type_name=image&sort=new&limit=20&offset=${offset}`;
+          url = `${baseUrl}/artifacts/?media_type=image&sort=new&limit=${PAGE_SIZE}&offset=${offset}`;
           method = "GET";
           body = undefined;
-          response = await fetch(url, { method, headers });
+          response = await fetchWithProxy(url, { method, headers });
         }
 
         // Fallback for Text Search if plugin missing (404)
@@ -186,64 +236,51 @@ export function useEmbeddrImages({
           );
           url = `${baseUrl}/artifacts/search?q=${encodeURIComponent(
             searchQuery,
-          )}&limit=20&offset=${offset}`;
+          )}&limit=${PAGE_SIZE}&offset=${offset}`;
           method = "GET";
           body = undefined;
-          response = await fetch(url, { method, headers });
+          response = await fetchWithProxy(url, { method, headers });
         }
 
         if (response.ok) {
           const data = await response.json();
-          let items: Array<any> = [];
+          let items: Array<PromptImageRead> = [];
 
           if (data.items) {
-            // V2 Paginated Response or Search Response
-            items = data.items.map((item: any) => {
-              // Map V2 Artifact to PromptImageRead
-              // OR Map SearchResultItem (which only has ID/Score)
-              const id = item.id;
-              // Check if we have metadata (Artifact) or just ID (Search)
-              const isFullArtifact = !!item.uri;
-              const metadata = item.metadata_json || {};
-
-              const rawImageUrl = apiClient
-                ? apiClient.artifacts.getContentUrl(id)
-                : `${baseUrl}/artifacts/${id}/content`;
-              const rawThumbUrl = apiClient
-                ? apiClient.artifacts.getPreviewUrl(id, "thumbnail")
-                : `${baseUrl}/artifacts/${id}/preview?preview_type=thumbnail`;
-
-              return {
-                id: id,
-                prompt:
-                  metadata.prompt ||
-                  metadata.filename ||
-                  (isFullArtifact ? "Untitled" : "Similar Result"),
-                image_url: rawImageUrl.startsWith("http")
-                  ? `/embeddr/proxy?url=${encodeURIComponent(rawImageUrl)}`
-                  : rawImageUrl,
-                thumb_url: rawThumbUrl.startsWith("http")
-                  ? `/embeddr/proxy?url=${encodeURIComponent(rawThumbUrl)}`
-                  : rawThumbUrl,
-                created_at: item.created_at || new Date().toISOString(),
-                like_count: 0,
-                liked_by_me: false,
-                width: metadata.width || 0,
-                height: metadata.height || 0,
-                score: item.score, // specific to search
-              };
-            });
-            // Handle pagination check
-            if (data.total !== undefined) {
-              setHasMore(offset + items.length < data.total);
-            } else {
-              // Search plugin might return count
-              setHasMore(items.length === 20);
+            const rawItems = Array.isArray(data.items) ? data.items : [];
+            const artifactIds = rawItems
+              .map((item: any) => item?.id ?? item?.artifact_id)
+              .filter((id: unknown): id is string | number => Boolean(id));
+            const needsArtifactLookup = rawItems.some(
+              (item: any) => !item?.uri && !item?.metadata_json,
+            );
+            let artifactItems = rawItems;
+            if (needsArtifactLookup && artifactIds.length) {
+              const resolvedItems = await fetchArtifactsByIds(artifactIds);
+              const byId = new Map(
+                resolvedItems.map((item: any) => [String(item.id), item]),
+              );
+              artifactItems = artifactIds
+                .map((id) => byId.get(String(id)))
+                .filter(Boolean);
             }
+
+            items = mapArtifacts(artifactItems);
+            const total =
+              typeof data.count === "number"
+                ? data.count
+                : typeof data.total === "number"
+                  ? data.total
+                  : undefined;
+            setHasMore(
+              typeof total === "number"
+                ? offset + artifactIds.length < total
+                : rawItems.length === PAGE_SIZE,
+            );
           } else if (Array.isArray(data)) {
             // Legacy Cloud API or simple array
             items = data;
-            setHasMore(data.length === 20);
+            setHasMore(data.length === PAGE_SIZE);
           }
 
           if (reset) {
@@ -280,7 +317,7 @@ export function useEmbeddrImages({
         setLoading(false);
       }
     },
-    [apiBase, configLoaded, mode, similarImageId, apiKey],
+    [apiBase, apiClient, configLoaded, mode, similarImageId, apiKey],
   );
 
   return {

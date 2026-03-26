@@ -4,10 +4,12 @@ import * as ReactDOMLib from "react-dom";
 import * as EmbeddrUI from "@embeddr/react-ui";
 import * as Lucide from "lucide-react";
 import * as ReactQuery from "@tanstack/react-query";
+import * as THREE from "three";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import * as Recharts from "recharts";
 import { ImageDialogProvider } from "@embeddr/react-ui/providers/ImageDialogProvider";
 import { ExternalNavProvider } from "@embeddr/react-ui";
+import { globalEventBus } from "@embeddr/zen-shell";
 // @ts-ignore
 import { app } from "../../../scripts/app.js";
 import EmbeddrPanel from "./components/panels/EmbeddrPanel.js";
@@ -27,16 +29,119 @@ import "./globals.css";
 (window as any).Lucide = Lucide;
 (window as any).ReactQuery = ReactQuery;
 (window as any).Recharts = Recharts;
+(window as any).THREE = THREE;
+(window as any).Embeddr = {
+  ...((window as any).Embeddr || {}),
+  eventBus: globalEventBus,
+};
 
 const embeddrUI: Record<string, any> = { ...EmbeddrUI };
-if (!("usePluginDrop" in embeddrUI)) {
-  embeddrUI.usePluginDrop = () => ({
-    isOver: false,
-    canDrop: false,
-    dropRef: () => {},
-  });
+const fallbackDnDTypes = embeddrUI.EmbeddrDnDTypes || {
+  ARTIFACT: "application/embeddr-artifact-json",
+  ARTIFACT_ID: "application/embeddr-artifact-id",
+  IMAGE_ID: "application/embeddr-image-id",
+  IMAGE_URL: "application/external-image-url",
+  VIDEO_URL: "application/external-video-url",
+  PREVIEW_URL: "application/embeddr-preview-url",
+  ARTIFACT_TYPE: "application/embeddr-artifact-type",
+};
+if (typeof embeddrUI.usePluginDrop !== "function") {
+  embeddrUI.usePluginDrop = ({
+    onArtifact,
+    onFile,
+    onUrl,
+    onText,
+    stopPropagation = true,
+  }: {
+    onArtifact?: (data: Record<string, any>) => void;
+    onFile?: (file: File) => void;
+    onUrl?: (url: string) => void;
+    onText?: (text: string) => void;
+    stopPropagation?: boolean;
+  } = {}) => {
+    const [isDragOver, setIsDragOver] = React.useState(false);
+
+    const handleDragOver = React.useCallback(
+      (event: React.DragEvent) => {
+        event.preventDefault();
+        if (stopPropagation) event.stopPropagation();
+        setIsDragOver(true);
+      },
+      [stopPropagation],
+    );
+
+    const handleDragLeave = React.useCallback(
+      (event: React.DragEvent) => {
+        event.preventDefault();
+        if (stopPropagation) event.stopPropagation();
+        setIsDragOver(false);
+      },
+      [stopPropagation],
+    );
+
+    const handleDrop = React.useCallback(
+      (event: React.DragEvent) => {
+        event.preventDefault();
+        if (stopPropagation) event.stopPropagation();
+        setIsDragOver(false);
+
+        const dt = event.dataTransfer;
+        const artifactJson = dt.getData(fallbackDnDTypes.ARTIFACT);
+        if (artifactJson && onArtifact) {
+          try {
+            onArtifact(JSON.parse(artifactJson));
+            return;
+          } catch (error) {
+            console.warn("[EmbeddrUI] Failed to parse dropped artifact", error);
+          }
+        }
+
+        const artifactId =
+          dt.getData(fallbackDnDTypes.ARTIFACT_ID) ||
+          dt.getData(fallbackDnDTypes.IMAGE_ID);
+        if (artifactId && onArtifact) {
+          onArtifact({
+            id: artifactId,
+            type: dt.getData(fallbackDnDTypes.ARTIFACT_TYPE) || "image",
+            previewUrl: dt.getData(fallbackDnDTypes.PREVIEW_URL),
+            imageUrl: dt.getData(fallbackDnDTypes.IMAGE_URL),
+            videoUrl: dt.getData(fallbackDnDTypes.VIDEO_URL),
+          });
+          return;
+        }
+
+        if (dt.files.length > 0 && onFile) {
+          Array.from(dt.files).forEach((file) => onFile(file));
+          return;
+        }
+
+        const url = dt.getData("text/uri-list");
+        if (url && onUrl) {
+          onUrl(url);
+          return;
+        }
+
+        const text = dt.getData("text/plain");
+        if (text) {
+          if (text.startsWith("http") && onUrl) {
+            onUrl(text);
+          } else if (onText) {
+            onText(text);
+          }
+        }
+      },
+      [onArtifact, onFile, onText, onUrl, stopPropagation],
+    );
+
+    return {
+      handleDragOver,
+      handleDragLeave,
+      handleDrop,
+      isDragOver,
+    };
+  };
 }
-if (!("usePluginStorage" in embeddrUI)) {
+if (typeof embeddrUI.usePluginStorage !== "function") {
   embeddrUI.usePluginStorage = <T,>(
     pluginId: string,
     key: string,
@@ -63,6 +168,96 @@ if (!("usePluginStorage" in embeddrUI)) {
     }, [storageKey, value]);
     return [value, setValue] as const;
   };
+}
+if (typeof embeddrUI.usePanelLifecycle !== "function") {
+  embeddrUI.usePanelLifecycle = (
+    request: ((path: string, init?: RequestInit) => Promise<any>) | undefined,
+    config: {
+      panelId: string;
+      panelType: string;
+      title?: string;
+      windowId?: string | null;
+      meta?: Record<string, any>;
+    },
+  ) => {
+    const configRef = React.useRef(config);
+    configRef.current = config;
+
+    React.useEffect(() => {
+      if (typeof request !== "function") return;
+      const { panelId, panelType, title, windowId, meta } = configRef.current;
+      request("/execute/ui.panel_register", {
+        method: "POST",
+        body: JSON.stringify({
+          panel_id: panelId,
+          panel_type: panelType,
+          title,
+          window_id: windowId ?? null,
+          meta,
+        }),
+      }).catch(() => undefined);
+
+      return () => {
+        request("/execute/ui.panel_unregister", {
+          method: "POST",
+          body: JSON.stringify({ panel_id: configRef.current.panelId }),
+        }).catch(() => undefined);
+      };
+    }, [request]);
+
+    const updatePanel = React.useCallback(
+      (payload: {
+        items?: Array<Record<string, any>>;
+        lastActive?: boolean;
+        meta?: Record<string, any>;
+      }) => {
+        if (typeof request !== "function") return;
+        const body: Record<string, any> = {
+          panel_id: configRef.current.panelId,
+        };
+        if (payload.items !== undefined) body.items = payload.items;
+        if (payload.lastActive) body.last_active = new Date().toISOString();
+        if (payload.meta !== undefined) body.meta = payload.meta;
+        request("/execute/ui.panel_update", {
+          method: "POST",
+          body: JSON.stringify(body),
+        }).catch(() => undefined);
+      },
+      [request],
+    );
+
+    return { updatePanel };
+  };
+}
+if (typeof embeddrUI.registerReactiveContext !== "function") {
+  embeddrUI.registerReactiveContext = () => () => undefined;
+}
+if (typeof embeddrUI.resolveReactiveConfig !== "function") {
+  embeddrUI.resolveReactiveConfig = () => undefined;
+}
+if (typeof embeddrUI.publishReactiveArtifactState !== "function") {
+  embeddrUI.publishReactiveArtifactState = () => undefined;
+}
+if (typeof embeddrUI.readReactiveArtifactState !== "function") {
+  embeddrUI.readReactiveArtifactState = () => null;
+}
+if (typeof embeddrUI.subscribeReactiveArtifactState !== "function") {
+  embeddrUI.subscribeReactiveArtifactState = () => () => undefined;
+}
+if (typeof embeddrUI.matchReactiveMessage !== "function") {
+  embeddrUI.matchReactiveMessage = () => false;
+}
+if (typeof embeddrUI.extractReactiveArtifactId !== "function") {
+  embeddrUI.extractReactiveArtifactId = () => undefined;
+}
+if (typeof embeddrUI.extractReactivePreview !== "function") {
+  embeddrUI.extractReactivePreview = () => undefined;
+}
+if (typeof embeddrUI.syncRenderablesFromLotus !== "function") {
+  embeddrUI.syncRenderablesFromLotus = async () => [];
+}
+if (typeof embeddrUI.resolveRenderable !== "function") {
+  embeddrUI.resolveRenderable = () => undefined;
 }
 (window as any).EmbeddrUI = embeddrUI;
 (window as any)["@embeddr/react-ui"] = embeddrUI;
@@ -133,10 +328,12 @@ document.body.appendChild(dialogContainer);
 const dialogRoot = ReactDOM.createRoot(dialogContainer);
 dialogRoot.render(
   <QueryClientProvider client={queryClient}>
-    <ImageDialogProvider>
-      <GlobalDialog />
-      <ZenShell />
-    </ImageDialogProvider>
+    <ExternalNavProvider>
+      <ImageDialogProvider>
+        <GlobalDialog />
+        <ZenShell />
+      </ImageDialogProvider>
+    </ExternalNavProvider>
   </QueryClientProvider>,
 );
 app.extensionManager.registerSidebarTab({

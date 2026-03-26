@@ -15,8 +15,8 @@ interface ImageGridProps {
   onLoadMore: () => void;
   onSelect?: (image: PromptImageRead) => void;
   onRightClick: (image: PromptImageRead) => void;
-  onSimilarSearch?: (imageId: number) => void;
-  selectedId?: number;
+  onSimilarSearch?: (imageId: string | number) => void;
+  selectedId?: string | number;
   gridSize?: number;
   imagePreviewContain?: boolean;
   scrollRef?: React.RefObject<HTMLDivElement | null>;
@@ -37,7 +37,7 @@ export function ImageGrid({
   scrollRef,
   apiKey,
 }: ImageGridProps) {
-  const observerTarget = useRef(null);
+  const observerTarget = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     const observer = new IntersectionObserver(
@@ -46,19 +46,22 @@ export function ImageGrid({
           onLoadMore();
         }
       },
-      { threshold: 0, rootMargin: "200px" },
+      {
+        root: scrollRef?.current ?? null,
+        threshold: 0,
+        rootMargin: "200px",
+      },
     );
 
-    if (observerTarget.current) {
-      observer.observe(observerTarget.current);
+    const target = observerTarget.current;
+    if (target) {
+      observer.observe(target);
     }
 
     return () => {
-      if (observerTarget.current) {
-        observer.unobserve(observerTarget.current);
-      }
+      observer.disconnect();
     };
-  }, [hasMore, loading, onLoadMore]);
+  }, [hasMore, loading, onLoadMore, scrollRef]);
 
   const handleDragStart = (e: React.DragEvent, image: PromptImageRead) => {
     const artifactId = image.id.toString();

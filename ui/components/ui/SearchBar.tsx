@@ -18,8 +18,8 @@ interface SearchBarProps {
   setSearchQuery: (query: string) => void;
   onSearch: (e: React.FormEvent) => void;
   loading: boolean;
-  similarImageId: number | null;
-  setSimilarImageId: (id: number | null) => void;
+  similarImageId: string | number | null;
+  setSimilarImageId: (id: string | number | null) => void;
   mode: ApiMode;
   selectedCollectionId: string;
   setSelectedCollectionId: (id: string) => void;

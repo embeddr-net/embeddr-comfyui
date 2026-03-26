@@ -27,10 +27,16 @@ export function useEmbeddrCollections({
   const [loadingCollections, setLoadingCollections] = useState(false);
 
   const fetchCollections = useCallback(async () => {
-    if (!configLoaded || !apiBase) return;
+    if (!configLoaded || (!apiBase && !apiClient)) return;
 
     setLoadingCollections(true);
     try {
+      if (apiClient) {
+        const data = await apiClient.collections.list();
+        setCollections(Array.isArray(data) ? data : []);
+        return;
+      }
+
       const headers: Record<string, string> = {
         "Content-Type": "application/json",
       };
@@ -72,15 +78,27 @@ export function useEmbeddrCollections({
     } finally {
       setLoadingCollections(false);
     }
-  }, [apiBase, configLoaded, apiKey]);
+  }, [apiBase, apiClient, configLoaded, apiKey]);
 
   const [creating, setCreating] = useState(false);
 
   const createCollection = useCallback(
     async (label: string) => {
-      if (!configLoaded || !apiBase) return;
+      if (!configLoaded || (!apiBase && !apiClient)) return;
       setCreating(true);
       try {
+        if (apiClient) {
+          await apiClient.collections.add({
+            label,
+            type_name: "collection:mix",
+            uri: `embeddr:///collections/${label
+              .toLowerCase()
+              .replace(/\s/g, "_")}_${Date.now()}`,
+          });
+          await fetchCollections();
+          return true;
+        }
+
         const headers: Record<string, string> = {
           "Content-Type": "application/json",
         };
@@ -127,7 +145,7 @@ export function useEmbeddrCollections({
         setCreating(false);
       }
     },
-    [apiBase, configLoaded, fetchCollections, apiKey],
+    [apiBase, apiClient, configLoaded, fetchCollections, apiKey],
   );
 
   return {

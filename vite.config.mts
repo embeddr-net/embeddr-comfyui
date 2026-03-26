@@ -4,6 +4,28 @@ import path from "path";
 import { fileURLToPath, URL } from "node:url";
 import tailwindcss from "@tailwindcss/vite";
 
+// Plugin to prevent tree-shaking of @embeddr/react-ui exports.
+// Without this, Vite removes exports not used by the ComfyUI extension
+// itself (e.g. pluginAssetPath, registerPreviewPresentation), causing
+// dynamically-loaded UMD plugins to crash when they reference those
+// functions on window.EmbeddrUI.
+const preservePluginGlobals: any = {
+  name: "preserve-plugin-globals",
+  transform(_code: string, id: string) {
+    if (
+      id.includes("embeddr-react-ui/") ||
+      id.includes("embeddr-zen-shell/") ||
+      id.includes("/three/")
+    ) {
+      return {
+        code: _code,
+        moduleSideEffects: "no-treeshake" as const,
+        map: null,
+      };
+    }
+  },
+};
+
 // Plugin to inline CSS into JS
 const inlineCssPlugin: any = {
   name: "inline-css",
@@ -53,15 +75,18 @@ const inlineCssPlugin: any = {
               .split(",")
               .map((s) => {
                 const trimmed = s.trim();
-                // Don't scope html, body, or other global selectors that are already in your CSS
-                if (
-                  trimmed === "html" ||
-                  trimmed === "body" ||
-                  trimmed === "*"
-                ) {
-                  return `.tailwind ${trimmed}`;
+                // Keep html.class / body.class selectors global – these set
+                // CSS custom-property theme variables and must cascade from
+                // the document root, not from a .tailwind wrapper.
+                if (/^(html|body)\./.test(trimmed)) {
+                  return trimmed;
                 }
-                return `.tailwind ${trimmed}`;
+                // Use :where(.tailwind) for zero-specificity scoping.
+                // This ensures the extension's utilities only match inside
+                // .tailwind containers, but don't gain higher specificity
+                // than ComfyUI's own utility classes – so contextual
+                // overrides like pt-11.5 after p-2 still work correctly.
+                return `:where(.tailwind) ${trimmed}`;
               })
               .join(", ");
             return `${scopedSelectors} { ${rules} }`;
@@ -83,7 +108,7 @@ const inlineCssPlugin: any = {
 };
 
 export default defineConfig({
-  plugins: [react(), tailwindcss(), inlineCssPlugin],
+  plugins: [react(), tailwindcss(), preservePluginGlobals, inlineCssPlugin],
   resolve: {
     alias: {
       "@": fileURLToPath(new URL("./ui", import.meta.url)),

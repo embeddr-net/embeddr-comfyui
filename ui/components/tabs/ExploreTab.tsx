@@ -32,8 +32,8 @@ interface ExploreTabProps {
     collectionId?: string | null,
   ) => Promise<void>;
   libraries: Array<LibraryPath>;
-  similarImageId: number | null;
-  setSimilarImageId: (id: number | null) => void;
+  similarImageId: string | number | null;
+  setSimilarImageId: (id: string | number | null) => void;
   mode: ApiMode;
   apiBase?: string; // Need apiBase for collections
   apiClient?: EmbeddrApiClient;
@@ -95,6 +95,7 @@ export function ExploreTab({
   useEffect(() => {
     if (!configLoaded) return;
     const colId = selectedCollectionId === "all" ? null : selectedCollectionId;
+    scrollRef.current?.scrollTo({ top: 0 });
     // libraryId is null now as we use collections
     fetchImages(true, searchQuery, viewMode, null, similarImageId, colId);
   }, [viewMode, configLoaded, selectedCollectionId, mode, similarImageId]); // Re-fetch when view mode changes or config is loaded
@@ -115,6 +116,7 @@ export function ExploreTab({
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     const colId = selectedCollectionId === "all" ? null : selectedCollectionId;
+    scrollRef.current?.scrollTo({ top: 0 });
     fetchImages(true, searchQuery, viewMode, null, similarImageId, colId);
   };
 
@@ -188,8 +190,8 @@ export function ExploreTab({
                   colId,
                 );
               }}
-              onSimilarSearch={(image) => {
-                setSimilarImageId(image.id); // Assuming image.id is number/string
+              onSimilarSearch={(imageId) => {
+                setSimilarImageId(imageId);
               }}
               onSelect={(image) => {
                 if (!image) return;

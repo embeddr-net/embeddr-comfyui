@@ -176,6 +176,10 @@ export function useEmbeddrSettings({
             data.grid_preview_contain.toString(),
           );
         }
+
+        if (data.auth_salt) {
+          localStorage.setItem("embeddr_auth_salt", data.auth_salt);
+        }
       } catch (e) {
         console.error("Failed to load config", e);
       } finally {
