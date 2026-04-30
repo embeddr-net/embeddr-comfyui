@@ -257,11 +257,32 @@ export function applyThemePackCss(pack?: ThemePack | null) {
   }
 
   if (pack.cssUrl) {
-    const link = document.createElement("link");
-    link.id = THEME_STYLE_ID;
-    link.rel = "stylesheet";
-    link.href = pack.cssUrl;
-    document.head.appendChild(link);
+    // Cross-origin <link rel=stylesheet> from ComfyUI's origin (8188) to the
+    // embeddr-cli (8003) is blocked by CORS in some setups. Fetch through the
+    // ComfyUI proxy (same-origin) and inject the CSS text inline so the
+    // browser never has to resolve the cross-origin reference itself.
+    const style = document.createElement("style");
+    style.id = THEME_STYLE_ID;
+    document.head.appendChild(style);
+    proxyFetch(pack.cssUrl, { cache: "no-store" })
+      .then((res) => (res.ok ? res.text() : Promise.reject(res.status)))
+      .then((text) => {
+        style.textContent = text;
+      })
+      .catch((err) => {
+        // Fall back to direct link — this works if CORS is open.
+        if (style.parentElement) style.parentElement.removeChild(style);
+        const link = document.createElement("link");
+        link.id = THEME_STYLE_ID;
+        link.rel = "stylesheet";
+        link.href = pack.cssUrl as string;
+        document.head.appendChild(link);
+        // eslint-disable-next-line no-console
+        console.warn(
+          "[themePacks] proxyFetch failed for theme css, falling back to direct link",
+          err,
+        );
+      });
   }
 }
 

@@ -270,8 +270,11 @@ if (typeof embeddrUI.resolveRenderable !== "function") {
 (window as any)["recharts"] = Recharts;
 (window as any).Recharts = Recharts;
 
-document.documentElement.classList.add("embeddr-theme-root", "font-sans");
-document.body.classList.add("embeddr-theme-root", "font-sans");
+// `embeddr` matches the selector that theme.css packs use (`.embeddr { ... }`)
+// for chrome/glow/decoration rules. `embeddr-theme-root` is the existing class
+// other code keys off; both are added to every root + portal.
+document.documentElement.classList.add("embeddr", "embeddr-theme-root", "font-sans");
+document.body.classList.add("embeddr", "embeddr-theme-root", "font-sans");
 
 const originalFetch = window.fetch.bind(window);
 window.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
@@ -324,6 +327,7 @@ dialogContainer.id = "embeddr-global-dialog-root";
 dialogContainer.classList.add("tailwind");
 dialogContainer.classList.add("font-sans");
 dialogContainer.classList.add("embeddr-theme-root");
+dialogContainer.classList.add("embeddr");
 document.body.appendChild(dialogContainer);
 const dialogRoot = ReactDOM.createRoot(dialogContainer);
 dialogRoot.render(
@@ -350,6 +354,7 @@ app.extensionManager.registerSidebarTab({
     container.classList.add("embeddr-sidebar-container");
     // Default to dark, but let React handle it
     container.classList.add("embeddr-theme-root");
+    container.classList.add("embeddr");
     // Prevent the parent container from scrolling
     container.style.overflow = "hidden";
     container.style.height = "100%";
@@ -373,6 +378,9 @@ app.extensionManager.registerSidebarTab({
             }
             if (!portal.classList.contains("embeddr-theme-root")) {
               portal.classList.add("embeddr-theme-root");
+            }
+            if (!portal.classList.contains("embeddr")) {
+              portal.classList.add("embeddr");
             }
             if (isDark) {
               portal.classList.add("dark");

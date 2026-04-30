@@ -49,7 +49,7 @@ def get_embeddr_base_url(default: str = "http://localhost:8003") -> str:
         or cfg.get("endpoint")
     )
 
-    return _normalize_base_url(env_url or cfg_url, default)
+    return _normalize_base_url(cfg_url or env_url, default)
 
 
 def get_api_key() -> str | None:

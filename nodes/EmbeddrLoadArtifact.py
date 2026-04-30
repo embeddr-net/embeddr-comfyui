@@ -7,8 +7,7 @@ import numpy as np
 from PIL import Image, ImageOps
 from io import BytesIO
 from comfy_api.latest import io, ui
-from .utils import get_config
-from .utils.config import get_auth_headers
+from .utils.config import get_auth_headers, get_embeddr_base_url
 from .types import EmbeddrArtifactID, EmbeddrArtifactIDObject, EmbeddrArtifactInfo, EmbeddrArtifactInfoObject
 
 
@@ -48,8 +47,16 @@ class EmbeddrLoadArtifactNode(io.ComfyNode):
             url = f"{url}?proxy=1"
 
         base_netloc = urlparse(base_url).netloc
-        url_netloc = urlparse(url).netloc if url else ""
-        if url and base_netloc and url_netloc and url_netloc != base_netloc:
+        parsed = urlparse(url) if url else None
+        url_scheme = parsed.scheme if parsed else ""
+        url_netloc = parsed.netloc if parsed else ""
+        needs_proxy = (
+            not url
+            or not url_scheme
+            or not url_netloc
+            or (base_netloc and url_netloc != base_netloc)
+        )
+        if needs_proxy:
             proxy_url = f"{base_url}/api/v1/artifacts/{artifact_id}/content?proxy=1"
             cls._debug(
                 "forcing_proxy_url",
@@ -121,10 +128,7 @@ class EmbeddrLoadArtifactNode(io.ComfyNode):
             return io.NodeOutput(image, mask, EmbeddrArtifactIDObject(artifact_id=resolved_id), info)
 
         try:
-            config = get_config()
-            base_url = config.get("embeddr_url") or config.get(
-                "endpoint") or "http://localhost:8003"
-            base_url = base_url.rstrip("/")
+            base_url = get_embeddr_base_url()
 
             # 1. Fetch JSON metadata first
             meta_url = f"{base_url}/api/v1/artifacts/{resolved_id}"
