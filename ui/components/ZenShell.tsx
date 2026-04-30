@@ -1,41 +1,34 @@
-import React, {
-  useEffect,
-  useState,
-  useMemo,
-  useCallback,
-  useDeferredValue,
-} from "react";
-import type { EmbeddrAPI } from "@embeddr/react-ui/types";
+import React, { useCallback, useDeferredValue, useEffect, useMemo, useState } from "react";
 import { useEmbeddrAPI } from "@embeddr/react-ui/context";
 import {
-  ZenPanelManagerCore,
-  ZenDraggablePanel,
-  useZenWindowStore,
-  usePluginRegistry,
-  loadExternalPlugins,
-  DynamicPluginComponent,
-  PluginErrorBoundary,
-  type ZenWindowRendererProps,
-  EmbeddrProvider,
-  type PluginLoaderAdapter,
   CoreUIEventBridge,
+  DynamicPluginComponent,
+  EmbeddrProvider,
+  PluginErrorBoundary,
+  ZenDraggablePanel,
+  ZenPanelManagerCore,
   ZenWebSocketProvider,
   globalEventBus,
+  loadExternalPlugins,
+  usePluginRegistry,
+  useZenWindowStore,
 } from "@embeddr/zen-shell";
-import { useEmbeddrApi } from "../hooks/useEmbeddrApi";
 import {
+  AppWindow,
+  ExternalLink,
+  LayoutTemplate,
   Minimize2,
-  X,
   Play,
   RefreshCw,
-  LayoutTemplate,
-  Search,
-  AppWindow,
   RotateCcw,
-  ExternalLink,
+  Search,
+  X,
 } from "lucide-react";
 import { Button } from "@embeddr/react-ui/components/ui";
 import { Badge, Input, ScrollArea, Separator, cn } from "@embeddr/react-ui";
+import { useEmbeddrApi } from "../hooks/useEmbeddrApi";
+import type { PluginLoaderAdapter, ZenWindowRendererProps } from "@embeddr/zen-shell";
+import type { EmbeddrAPI } from "@embeddr/react-ui/types";
 
 const PANEL_SAFE_AREA = { top: 8, right: 8, bottom: 8, left: 8 };
 
@@ -46,8 +39,7 @@ type PersistedZenWindowStore = typeof useZenWindowStore & {
   };
 };
 
-const zenWindowStoreWithPersist =
-  useZenWindowStore as PersistedZenWindowStore;
+const zenWindowStoreWithPersist = useZenWindowStore;
 
 type LauncherComponentEntry = {
   pluginId: string;
@@ -177,11 +169,8 @@ const CustomWindowRenderer = React.memo((props: ZenWindowRendererProps) => {
     useZenWindowStore.getState().togglePin(id);
   }, [id]);
 
-  const defaultPosition =
-    windowState.position ||
-    panelProps.defaultPosition || { x: 100, y: 100 };
-  const defaultSize =
-    windowState.size || panelProps.defaultSize || { width: 500, height: 400 };
+  const defaultPosition = windowState.position || panelProps.defaultPosition || { x: 100, y: 100 };
+  const defaultSize = windowState.size || panelProps.defaultSize || { width: 500, height: 400 };
   const panelMeta = useMemo(
     () => ({
       id,
@@ -191,9 +180,7 @@ const CustomWindowRenderer = React.memo((props: ZenWindowRendererProps) => {
     [defaultPosition, id, isActive],
   );
   const panelClassName =
-    typeof panelProps.className === "string"
-      ? panelProps.className
-      : undefined;
+    typeof panelProps.className === "string" ? panelProps.className : undefined;
   const hideHeader = Boolean(panelProps.hideHeader);
   const transparent = Boolean(panelProps.transparent);
   const panelPluginId = resolved?.pluginId || "unknown";
@@ -206,12 +193,10 @@ const CustomWindowRenderer = React.memo((props: ZenWindowRendererProps) => {
   );
   const panelContentId = `panel-content-${panelPluginId.replace(/[^a-zA-Z0-9]/g, "-")}-${panelComponentName.replace(/[^a-zA-Z0-9]/g, "-")}`;
   const pluginApi = useMemo(
-    () =>
-      resolved ? extendApiForPlugin(baseApi, resolved.pluginId) : baseApi,
+    () => (resolved ? extendApiForPlugin(baseApi, resolved.pluginId) : baseApi),
     [baseApi, resolved?.pluginId],
   );
-  const GlobalEmbeddrProvider =
-    (window as any).EmbeddrUI?.EmbeddrProvider || EmbeddrProvider;
+  const GlobalEmbeddrProvider = (window as any).EmbeddrUI?.EmbeddrProvider || EmbeddrProvider;
 
   if (!resolved) {
     return (
@@ -255,9 +240,7 @@ const CustomWindowRenderer = React.memo((props: ZenWindowRendererProps) => {
     <div style={{ pointerEvents: "auto" }}>
       <WindowErrorBoundary
         windowId={id}
-        title={
-          windowState.title || resolved.def?.label || resolved.componentName
-        }
+        title={windowState.title || resolved.def?.label || resolved.componentName}
         onClose={handleClose}
         onMinimize={handleMinimize}
         onPinChange={handlePinChange}
@@ -275,11 +258,7 @@ const CustomWindowRenderer = React.memo((props: ZenWindowRendererProps) => {
       >
         <ZenDraggablePanel
           id={id}
-          title={
-            windowState.title ||
-            resolved.def?.label ||
-            resolved.componentName
-          }
+          title={windowState.title || resolved.def?.label || resolved.componentName}
           isOpen={true}
           onMinimize={handleMinimize}
           pinned={windowState.isPinned}
@@ -400,10 +379,7 @@ class WindowErrorBoundary extends React.Component<
 type EmbeddrApiAdapterInput = ReturnType<typeof useEmbeddrApi>;
 
 function createEmbeddrApiAdapter(input: EmbeddrApiAdapterInput): EmbeddrAPI {
-  const backendUrl = (input.endpoint || "http://localhost:8003").replace(
-    /\/$/,
-    "",
-  );
+  const backendUrl = (input.endpoint || "http://localhost:8003").replace(/\/$/, "");
   const apiBase = `${backendUrl}/api/v1`;
   const assetBase = backendUrl.replace(/\/api(?:\/v\d+)?\/?$/, "");
 
@@ -414,18 +390,13 @@ function createEmbeddrApiAdapter(input: EmbeddrApiAdapterInput): EmbeddrAPI {
       const baseUrl =
         assetBase ||
         backendUrl ||
-        (typeof window !== "undefined"
-          ? window.location.origin
-          : "http://localhost");
+        (typeof window !== "undefined" ? window.location.origin : "http://localhost");
       const parsed = new URL(url, baseUrl);
       const assetOrigin = new URL(baseUrl).origin;
-      const windowOrigin =
-        typeof window !== "undefined" ? window.location.origin : assetOrigin;
-      const isInternal =
-        parsed.origin === assetOrigin || parsed.origin === windowOrigin;
+      const windowOrigin = typeof window !== "undefined" ? window.location.origin : assetOrigin;
+      const isInternal = parsed.origin === assetOrigin || parsed.origin === windowOrigin;
       const isProtectedPath =
-        parsed.pathname.startsWith("/api/") ||
-        parsed.pathname.startsWith("/plugins/");
+        parsed.pathname.startsWith("/api/") || parsed.pathname.startsWith("/plugins/");
       if (!isInternal || !isProtectedPath) return parsed.toString();
       if (!parsed.searchParams.has("api_key")) {
         parsed.searchParams.set("api_key", apiKey);
@@ -436,17 +407,13 @@ function createEmbeddrApiAdapter(input: EmbeddrApiAdapterInput): EmbeddrAPI {
     }
   };
 
-  const normalizePluginLogoUrl = (
-    value: string | null,
-    pluginName?: string,
-  ) => {
+  const normalizePluginLogoUrl = (value: string | null, pluginName?: string) => {
     if (!value) return null;
     if (value.startsWith("http://") || value.startsWith("https://")) {
       return signProtectedUrl(value);
     }
     if (value.startsWith("//")) {
-      const protocol =
-        typeof window !== "undefined" ? window.location.protocol : "https:";
+      const protocol = typeof window !== "undefined" ? window.location.protocol : "https:";
       return signProtectedUrl(`${protocol}${value}`);
     }
     if (value.startsWith("/api/") || value.startsWith("/plugins/")) {
@@ -523,11 +490,7 @@ function createEmbeddrApiAdapter(input: EmbeddrApiAdapterInput): EmbeddrAPI {
   };
 
   const modelCatalog = {
-    list: async (input: {
-      category: string;
-      page?: number;
-      limit?: number;
-    }) => ({
+    list: async (input: { category: string; page?: number; limit?: number }) => ({
       items: [],
       total: 0,
       page: input.page || 1,
@@ -567,14 +530,14 @@ function createEmbeddrApiAdapter(input: EmbeddrApiAdapterInput): EmbeddrAPI {
     settings: {
       get: <T,>(key: string, defaultValue?: T) => {
         const raw = localStorage.getItem(key);
-        return (raw !== null ? (JSON.parse(raw) as T) : defaultValue) as T;
+        return raw !== null ? (JSON.parse(raw) as T) : defaultValue;
       },
       set: (key: string, value: any) => {
         localStorage.setItem(key, JSON.stringify(value));
       },
       getPlugin: <T,>(pluginId: string, key: string, defaultValue?: T) => {
         const raw = localStorage.getItem(`${pluginId}:${key}`);
-        return (raw !== null ? (JSON.parse(raw) as T) : defaultValue) as T;
+        return raw !== null ? (JSON.parse(raw) as T) : defaultValue;
       },
       setPlugin: (pluginId: string, key: string, value: any) => {
         localStorage.setItem(`${pluginId}:${key}`, JSON.stringify(value));
@@ -599,10 +562,8 @@ function createEmbeddrApiAdapter(input: EmbeddrApiAdapterInput): EmbeddrAPI {
     artifacts: {
       list: (inputData) => {
         const q = new URLSearchParams();
-        if (inputData?.limit !== undefined)
-          q.append("limit", String(inputData.limit));
-        if (inputData?.offset !== undefined)
-          q.append("offset", String(inputData.offset));
+        if (inputData?.limit !== undefined) q.append("limit", String(inputData.limit));
+        if (inputData?.offset !== undefined) q.append("offset", String(inputData.offset));
         if (inputData?.type_name) q.append("type_name", inputData.type_name);
         if (inputData?.media_type) q.append("media_type", inputData.media_type);
         if (inputData?.sort) q.append("sort", inputData.sort);
@@ -613,13 +574,10 @@ function createEmbeddrApiAdapter(input: EmbeddrApiAdapterInput): EmbeddrAPI {
       get: (id: string) => jsonRequest(`/artifacts/${id}`),
       getContentUrl: (id: string) => `${apiBase}/artifacts/${id}/content`,
       resolve: (inputData: any) => jsonRequest(`/artifacts/${inputData.id}`),
-      getPreviewUrl: (
-        id: string,
-        type: "thumbnail" | "preview" = "thumbnail",
-      ) => `${apiBase}/artifacts/${id}/preview?preview_type=${type}`,
+      getPreviewUrl: (id: string, type: "thumbnail" | "preview" = "thumbnail") =>
+        `${apiBase}/artifacts/${id}/preview?preview_type=${type}`,
       getEmbeddings: (id: string) => jsonRequest(`/artifacts/${id}/embeddings`),
-      getAnnotations: (id: string) =>
-        jsonRequest(`/artifacts/${id}/annotations`),
+      getAnnotations: (id: string) => jsonRequest(`/artifacts/${id}/annotations`),
       getLineage: (id: string) => jsonRequest(`/artifacts/${id}/lineage`),
       getRelations: (id: string) => jsonRequest(`/artifacts/${id}/relations`),
       addRelation: (sourceId: string, inputData: any) =>
@@ -634,8 +592,7 @@ function createEmbeddrApiAdapter(input: EmbeddrApiAdapterInput): EmbeddrAPI {
         }),
       getSubgraph: (id: string, params: any) => {
         const q = new URLSearchParams();
-        if (params?.maxDepth !== undefined)
-          q.append("max_depth", String(params.maxDepth));
+        if (params?.maxDepth !== undefined) q.append("max_depth", String(params.maxDepth));
         if (params?.includeLineage !== undefined)
           q.append("include_lineage", String(params.includeLineage));
         if (params?.includeRelations !== undefined)
@@ -655,8 +612,7 @@ function createEmbeddrApiAdapter(input: EmbeddrApiAdapterInput): EmbeddrAPI {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(inputData),
         }),
-      delete: (id: string) =>
-        jsonRequest(`/artifacts/${id}`, { method: "DELETE" }),
+      delete: (id: string) => jsonRequest(`/artifacts/${id}`, { method: "DELETE" }),
       uploadInit: (inputData: any) =>
         jsonRequest(`/artifacts/${inputData.artifact_id}/upload/init`, {
           method: "POST",
@@ -725,9 +681,7 @@ function createEmbeddrApiAdapter(input: EmbeddrApiAdapterInput): EmbeddrAPI {
           body: JSON.stringify(payload ?? {}),
         }),
       query: (query: string, limit = 20) =>
-        jsonRequest(
-          `/lotus/query?q=${encodeURIComponent(query)}&limit=${limit}`,
-        ),
+        jsonRequest(`/lotus/query?q=${encodeURIComponent(query)}&limit=${limit}`),
       list: (payload?: any) => {
         const q = new URLSearchParams();
         if (payload?.kind) q.append("kind", payload.kind);
@@ -735,9 +689,7 @@ function createEmbeddrApiAdapter(input: EmbeddrApiAdapterInput): EmbeddrAPI {
         if (payload?.slot) q.append("slot", payload.slot);
         if (payload?.limit) q.append("limit", String(payload.limit));
         if (payload?.offset) q.append("offset", String(payload.offset));
-        return jsonRequest(
-          `/lotus/list${q.toString() ? `?${q.toString()}` : ""}`,
-        );
+        return jsonRequest(`/lotus/list${q.toString() ? `?${q.toString()}` : ""}`);
       },
     },
     client: {
@@ -762,10 +714,7 @@ function createEmbeddrApiAdapter(input: EmbeddrApiAdapterInput): EmbeddrAPI {
         if (key && !headers.has("X-API-Key")) headers.set("X-API-Key", key);
         return input.apiClient.fetch(url, { ...init, headers });
       },
-      request: async <T = any,>(
-        path: string,
-        init?: RequestInit,
-      ): Promise<T> => {
+      request: async <T = any,>(path: string, init?: RequestInit): Promise<T> => {
         const url = path.startsWith("http")
           ? path
           : `${apiBase}/plugins${path.startsWith("/") ? path : `/${path}`}`;
@@ -773,8 +722,7 @@ function createEmbeddrApiAdapter(input: EmbeddrApiAdapterInput): EmbeddrAPI {
         const headers = new Headers(init?.headers || {});
         if (key && !headers.has("X-API-Key")) headers.set("X-API-Key", key);
         const res = await input.apiClient.fetch(url, { ...init, headers });
-        if (!res.ok)
-          throw new Error(await res.text().catch(() => res.statusText));
+        if (!res.ok) throw new Error(await res.text().catch(() => res.statusText));
         return res.json();
       },
     },
@@ -799,15 +747,9 @@ function createEmbeddrApiAdapter(input: EmbeddrApiAdapterInput): EmbeddrAPI {
     },
     events: {
       on: (event, listener) =>
-        globalEventBus.on(
-          event as string,
-          listener as (...args: any[]) => void,
-        ),
+        globalEventBus.on(event as string, listener as (...args: Array<any>) => void),
       off: (event, listener) =>
-        globalEventBus.off(
-          event as string,
-          listener as (...args: any[]) => void,
-        ),
+        globalEventBus.off(event as string, listener as (...args: Array<any>) => void),
       emit: (event, payload) => globalEventBus.emit(event as string, payload),
     },
     comfy: modelCatalog as any,
@@ -831,12 +773,9 @@ function createEmbeddrApiAdapter(input: EmbeddrApiAdapterInput): EmbeddrAPI {
         const data = (await jsonRequest("/plugins/logos")) as {
           logos?: Record<string, string | null>;
         };
-        const logos = (data?.logos || {}) as Record<string, string | null>;
+        const logos = data?.logos || {};
         return Object.fromEntries(
-          Object.entries(logos).map(([key, value]) => [
-            key,
-            normalizePluginLogoUrl(value, key),
-          ]),
+          Object.entries(logos).map(([key, value]) => [key, normalizePluginLogoUrl(value, key)]),
         );
       },
       getActions: () => [],
@@ -889,10 +828,7 @@ function extendApiForPlugin(api: EmbeddrAPI, pluginId: string): EmbeddrAPI {
               path.startsWith("/") ? path.slice(1) : path
             }`;
 
-        if (
-          url.includes("/api/v1/lotus/") &&
-          (nextInit.method || "GET").toUpperCase() === "POST"
-        ) {
+        if (url.includes("/api/v1/lotus/") && (nextInit.method || "GET").toUpperCase() === "POST") {
           const capId = url.split("/api/v1/lotus/")[1] || "";
           let payload: any = undefined;
           if (typeof nextInit.body === "string") {
@@ -922,14 +858,12 @@ export function ZenShell() {
   const [isOpen, setIsOpen] = useState(false);
   const [launcherCollapsed, setLauncherCollapsed] = useState(false);
   const [launcherQuery, setLauncherQuery] = useState("");
-  const [launcherMode, setLauncherMode] = useState<"workspace" | "catalog">(
-    "workspace",
-  );
+  const [launcherMode, setLauncherMode] = useState<"workspace" | "catalog">("workspace");
   const [pluginsLoading, setPluginsLoading] = useState(false);
   const [pluginLoadError, setPluginLoadError] = useState<string | null>(null);
   const [pluginBootstrapComplete, setPluginBootstrapComplete] = useState(false);
-  const [windowStoreHydrated, setWindowStoreHydrated] = useState(() =>
-    zenWindowStoreWithPersist.persist?.hasHydrated?.() ?? true,
+  const [windowStoreHydrated, setWindowStoreHydrated] = useState(
+    () => zenWindowStoreWithPersist.persist?.hasHydrated?.() ?? true,
   );
 
   let api;
@@ -962,39 +896,33 @@ export function ZenShell() {
     [api.endpoint],
   );
   const orderIndexByWindowId = useMemo(
-    () =>
-      new Map(panelOrder.map((id, index) => [id, index] as const)),
+    () => new Map(panelOrder.map((id, index) => [id, index] as const)),
     [panelOrder],
   );
-  const launcherComponents = useMemo<LauncherComponentEntry[]>(
+  const launcherComponents = useMemo<Array<LauncherComponentEntry>>(
     () =>
       knownPlugins
         .flatMap((pluginId) => {
           const plugin = plugins[pluginId];
-          return (plugin?.components ?? []).map(
-            (component: any, componentIndex: number) => ({
+          return (plugin?.components ?? []).map((component: any, componentIndex: number) => ({
+            pluginId,
+            pluginLabel: plugin?.name || pluginId,
+            componentId: `${pluginId}-${
+              component.exportName ||
+              component.component ||
+              component.name ||
+              `comp-${componentIndex}`
+            }`,
+            title:
+              component.label ||
+              component.name ||
+              component.component ||
+              component.exportName ||
               pluginId,
-              pluginLabel: plugin?.name || pluginId,
-              componentId: `${pluginId}-${
-                component.exportName ||
-                component.component ||
-                component.name ||
-                `comp-${componentIndex}`
-              }`,
-              title:
-                component.label ||
-                component.name ||
-                component.component ||
-                component.exportName ||
-                pluginId,
-              subtitle:
-                component.component ||
-                component.exportName ||
-                component.name ||
-                "Plugin panel",
-              component,
-            }),
-          );
+            subtitle:
+              component.component || component.exportName || component.name || "Plugin panel",
+            component,
+          }));
         })
         .sort(
           (left, right) =>
@@ -1003,7 +931,7 @@ export function ZenShell() {
         ),
     [knownPlugins, plugins],
   );
-  const launcherOpenWindows = useMemo<LauncherWindowEntry[]>(
+  const launcherOpenWindows = useMemo<Array<LauncherWindowEntry>>(
     () =>
       Object.values(windows)
         .filter((windowState) => !windowState.isMinimized && !windowState.groupHostId)
@@ -1012,14 +940,8 @@ export function ZenShell() {
           return {
             id: windowState.id,
             title:
-              windowState.title ||
-              resolved?.def?.label ||
-              resolved?.componentName ||
-              "Untitled",
-            subtitle:
-              resolved?.pluginId ||
-              resolved?.def?.component ||
-              windowState.componentId,
+              windowState.title || resolved?.def?.label || resolved?.componentName || "Untitled",
+            subtitle: resolved?.pluginId || resolved?.def?.component || windowState.componentId,
             componentId: windowState.componentId,
             isPinned: Boolean(windowState.isPinned),
             tabsCount: windowState.tabs?.length || 0,
@@ -1029,7 +951,7 @@ export function ZenShell() {
         .sort((left, right) => right.orderIndex - left.orderIndex),
     [orderIndexByWindowId, plugins, windows],
   );
-  const launcherMinimizedWindows = useMemo<LauncherWindowEntry[]>(
+  const launcherMinimizedWindows = useMemo<Array<LauncherWindowEntry>>(
     () =>
       Object.values(windows)
         .filter((windowState) => windowState.isMinimized)
@@ -1038,14 +960,8 @@ export function ZenShell() {
           return {
             id: windowState.id,
             title:
-              windowState.title ||
-              resolved?.def?.label ||
-              resolved?.componentName ||
-              "Untitled",
-            subtitle:
-              resolved?.pluginId ||
-              resolved?.def?.component ||
-              windowState.componentId,
+              windowState.title || resolved?.def?.label || resolved?.componentName || "Untitled",
+            subtitle: resolved?.pluginId || resolved?.def?.component || windowState.componentId,
             componentId: windowState.componentId,
             groupHostId: windowState.groupHostId,
             isPinned: Boolean(windowState.isPinned),
@@ -1069,8 +985,7 @@ export function ZenShell() {
         .filter(({ score }) => score > 0)
         .sort(
           (left, right) =>
-            right.score - left.score ||
-            right.entry.orderIndex - left.entry.orderIndex,
+            right.score - left.score || right.entry.orderIndex - left.entry.orderIndex,
         )
         .map(({ entry }) => entry),
     [deferredLauncherQuery, launcherOpenWindows],
@@ -1088,8 +1003,7 @@ export function ZenShell() {
         .filter(({ score }) => score > 0)
         .sort(
           (left, right) =>
-            right.score - left.score ||
-            right.entry.orderIndex - left.entry.orderIndex,
+            right.score - left.score || right.entry.orderIndex - left.entry.orderIndex,
         )
         .map(({ entry }) => entry),
     [deferredLauncherQuery, launcherMinimizedWindows],
@@ -1114,38 +1028,34 @@ export function ZenShell() {
         .map(({ entry }) => entry),
     [deferredLauncherQuery, launcherComponents],
   );
-  const groupedLauncherComponents = useMemo(
-    () => {
-      const groups = new Map<
-        string,
-        {
-          pluginId: string;
-          pluginLabel: string;
-          entries: LauncherComponentEntry[];
-        }
-      >();
+  const groupedLauncherComponents = useMemo(() => {
+    const groups = new Map<
+      string,
+      {
+        pluginId: string;
+        pluginLabel: string;
+        entries: Array<LauncherComponentEntry>;
+      }
+    >();
 
-      filteredLauncherComponents.forEach((entry) => {
-        const current = groups.get(entry.pluginId);
-        if (current) {
-          current.entries.push(entry);
-          return;
-        }
-        groups.set(entry.pluginId, {
-          pluginId: entry.pluginId,
-          pluginLabel: entry.pluginLabel,
-          entries: [entry],
-        });
+    filteredLauncherComponents.forEach((entry) => {
+      const current = groups.get(entry.pluginId);
+      if (current) {
+        current.entries.push(entry);
+        return;
+      }
+      groups.set(entry.pluginId, {
+        pluginId: entry.pluginId,
+        pluginLabel: entry.pluginLabel,
+        entries: [entry],
       });
+    });
 
-      return Array.from(groups.values()).sort(
-        (left, right) => left.pluginLabel.localeCompare(right.pluginLabel),
-      );
-    },
-    [filteredLauncherComponents],
-  );
-  const shellReady =
-    api.configLoaded && windowStoreHydrated && pluginBootstrapComplete;
+    return Array.from(groups.values()).sort((left, right) =>
+      left.pluginLabel.localeCompare(right.pluginLabel),
+    );
+  }, [filteredLauncherComponents]);
+  const shellReady = api.configLoaded && windowStoreHydrated && pluginBootstrapComplete;
 
   useEffect(() => {
     console.log("[ZenShell] Mounted");
@@ -1191,11 +1101,7 @@ export function ZenShell() {
           console.log("[ZenShell] Fetching plugins from", targetUrl);
           const res = await api.apiClient.fetch(targetUrl);
           if (!res.ok) {
-            console.error(
-              "[ZenShell] Plugin fetch failed",
-              res.status,
-              res.statusText,
-            );
+            console.error("[ZenShell] Plugin fetch failed", res.status, res.statusText);
             return [];
           }
           const data = await res.json();
@@ -1207,10 +1113,7 @@ export function ZenShell() {
         }
       },
       resolveScriptUrl: (manifest) => {
-        const baseUrl = (api.endpoint || "http://localhost:8003").replace(
-          /\/$/,
-          "",
-        );
+        const baseUrl = (api.endpoint || "http://localhost:8003").replace(/\/$/, "");
         const url = manifest.url;
 
         if (!url) return "";
@@ -1222,10 +1125,7 @@ export function ZenShell() {
         return url;
       },
       resolveCssUrl: (manifest) => {
-        const baseUrl = (api.endpoint || "http://localhost:8003").replace(
-          /\/$/,
-          "",
-        );
+        const baseUrl = (api.endpoint || "http://localhost:8003").replace(/\/$/, "");
         let url = manifest.url;
 
         if (!url) return null;
@@ -1268,7 +1168,7 @@ export function ZenShell() {
       }
     };
 
-    const targets: Window[] = [];
+    const targets: Array<Window> = [];
     const addTarget = (target?: Window | null) => {
       if (!target) return;
       if (!targets.includes(target)) targets.push(target);
@@ -1288,26 +1188,19 @@ export function ZenShell() {
 
     targets.forEach((target) => {
       target.addEventListener("embeddr-toggle-shell", handleToggle);
-      target.addEventListener(
-        "embeddr-launch-window",
-        handleLaunch as EventListener,
-      );
+      target.addEventListener("embeddr-launch-window", handleLaunch as EventListener);
     });
 
     return () => {
       targets.forEach((target) => {
         target.removeEventListener("embeddr-toggle-shell", handleToggle);
-        target.removeEventListener(
-          "embeddr-launch-window",
-          handleLaunch as EventListener,
-        );
+        target.removeEventListener("embeddr-launch-window", handleLaunch as EventListener);
       });
     };
   }, [isOpen, launcherCollapsed, spawnWindow]);
 
   const handlePluginLoadError = useCallback((error: unknown) => {
-    const message =
-      error instanceof Error ? error.message : "Failed to load plugins";
+    const message = error instanceof Error ? error.message : "Failed to load plugins";
     console.error("[ZenShell] Failed to load external plugins", error);
     setPluginLoadError(message);
   }, []);
@@ -1348,9 +1241,10 @@ export function ZenShell() {
         if (cancelled) return;
         handlePluginLoadError(error);
       } finally {
-        if (cancelled) return;
-        setPluginsLoading(false);
-        setPluginBootstrapComplete(true);
+        if (!cancelled) {
+          setPluginsLoading(false);
+          setPluginBootstrapComplete(true);
+        }
       }
     })();
     return () => {
@@ -1362,11 +1256,8 @@ export function ZenShell() {
     (entry: LauncherComponentEntry) => {
       const windowId = spawnWindow(entry.componentId, entry.title, {
         ...(entry.component.props ?? {}),
-        defaultPosition:
-          entry.component.defaultPosition ??
-          entry.component.props?.defaultPosition,
-        defaultSize:
-          entry.component.defaultSize ?? entry.component.props?.defaultSize,
+        defaultPosition: entry.component.defaultPosition ?? entry.component.props?.defaultPosition,
+        defaultSize: entry.component.defaultSize ?? entry.component.props?.defaultSize,
       });
 
       if (entry.component.defaultPosition || entry.component.defaultSize) {
@@ -1406,7 +1297,7 @@ export function ZenShell() {
     filteredMinimizedWindows.length > 0 ||
     groupedLauncherComponents.length > 0;
   const trimmedLauncherQuery = deferredLauncherQuery.trim();
-  const launcherSearchResults = useMemo<LauncherSearchResult[]>(() => {
+  const launcherSearchResults = useMemo<Array<LauncherSearchResult>>(() => {
     if (!trimmedLauncherQuery) return [];
 
     const openResults = launcherOpenWindows
@@ -1450,12 +1341,7 @@ export function ZenShell() {
     return [...openResults, ...minimizedResults, ...componentResults]
       .sort((left, right) => right.score - left.score)
       .slice(0, 40);
-  }, [
-    launcherComponents,
-    launcherMinimizedWindows,
-    launcherOpenWindows,
-    trimmedLauncherQuery,
-  ]);
+  }, [launcherComponents, launcherMinimizedWindows, launcherOpenWindows, trimmedLauncherQuery]);
   const effectiveLauncherMode = trimmedLauncherQuery ? "search" : launcherMode;
 
   return (
@@ -1514,8 +1400,7 @@ export function ZenShell() {
               <div className="text-left">
                 <div className="text-xs font-semibold">Zen Launcher</div>
                 <div className="text-[10px] text-muted-foreground">
-                  {launcherOpenWindows.length} open,{" "}
-                  {launcherMinimizedWindows.length} minimized
+                  {launcherOpenWindows.length} open, {launcherMinimizedWindows.length} minimized
                 </div>
               </div>
             </button>
@@ -1529,9 +1414,7 @@ export function ZenShell() {
                         <LayoutTemplate className="h-5 w-5" />
                       </div>
                       <div className="min-w-0">
-                        <div className="truncate text-sm font-semibold">
-                          Zen Launcher
-                        </div>
+                        <div className="truncate text-sm font-semibold">Zen Launcher</div>
                         <div className="text-[11px] text-muted-foreground">
                           {effectiveLauncherMode === "search"
                             ? "Fast search across open windows and plugin panels."
@@ -1550,12 +1433,7 @@ export function ZenShell() {
                       disabled={pluginsLoading}
                       onClick={reloadPlugins}
                     >
-                      <RefreshCw
-                        className={cn(
-                          "h-3.5 w-3.5",
-                          pluginsLoading && "animate-spin",
-                        )}
-                      />
+                      <RefreshCw className={cn("h-3.5 w-3.5", pluginsLoading && "animate-spin")} />
                     </Button>
                     <Button
                       variant="ghost"
@@ -1581,9 +1459,7 @@ export function ZenShell() {
                     <div className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
                       Open
                     </div>
-                    <div className="mt-1 text-lg font-semibold">
-                      {launcherOpenWindows.length}
-                    </div>
+                    <div className="mt-1 text-lg font-semibold">{launcherOpenWindows.length}</div>
                   </div>
                   <div className="rounded-2xl border border-border/60 bg-background/70 px-3 py-2">
                     <div className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
@@ -1597,9 +1473,7 @@ export function ZenShell() {
                     <div className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
                       Panels
                     </div>
-                    <div className="mt-1 text-lg font-semibold">
-                      {launcherComponents.length}
-                    </div>
+                    <div className="mt-1 text-lg font-semibold">{launcherComponents.length}</div>
                   </div>
                 </div>
 
@@ -1615,9 +1489,7 @@ export function ZenShell() {
 
                 <div className="mt-3 flex items-center gap-2">
                   <Button
-                    variant={
-                      effectiveLauncherMode === "workspace" ? "secondary" : "ghost"
-                    }
+                    variant={effectiveLauncherMode === "workspace" ? "secondary" : "ghost"}
                     size="sm"
                     className="h-7 rounded-full px-3 text-xs"
                     onClick={() => setLauncherMode("workspace")}
@@ -1628,9 +1500,7 @@ export function ZenShell() {
                     </Badge>
                   </Button>
                   <Button
-                    variant={
-                      effectiveLauncherMode === "catalog" ? "secondary" : "ghost"
-                    }
+                    variant={effectiveLauncherMode === "catalog" ? "secondary" : "ghost"}
                     size="sm"
                     className="h-7 rounded-full px-3 text-xs"
                     onClick={() => setLauncherMode("catalog")}
@@ -1661,10 +1531,7 @@ export function ZenShell() {
                       <div className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
                         Search Results
                       </div>
-                      <Badge
-                        variant="secondary"
-                        className="h-4 px-1.5 text-[10px]"
-                      >
+                      <Badge variant="secondary" className="h-4 px-1.5 text-[10px]">
                         {launcherSearchResults.length}
                       </Badge>
                     </div>
@@ -1691,10 +1558,7 @@ export function ZenShell() {
                                       >
                                         {entry.title}
                                       </span>
-                                      <Badge
-                                        variant="secondary"
-                                        className="h-4 px-1 text-[9px]"
-                                      >
+                                      <Badge variant="secondary" className="h-4 px-1 text-[9px]">
                                         Panel
                                       </Badge>
                                     </div>
@@ -1730,10 +1594,7 @@ export function ZenShell() {
                                 onClick={() =>
                                   isOpenResult
                                     ? handleFocusWindow(entry.id)
-                                    : handleRestoreWindow(
-                                        entry.id,
-                                        entry.groupHostId,
-                                      )
+                                    : handleRestoreWindow(entry.id, entry.groupHostId)
                                 }
                               >
                                 <div
@@ -1758,10 +1619,7 @@ export function ZenShell() {
                                     >
                                       {entry.title}
                                     </span>
-                                    <Badge
-                                      variant="secondary"
-                                      className="h-4 px-1 text-[9px]"
-                                    >
+                                    <Badge variant="secondary" className="h-4 px-1 text-[9px]">
                                       {isOpenResult ? "Open" : "Minimized"}
                                     </Badge>
                                   </div>
@@ -1794,10 +1652,7 @@ export function ZenShell() {
                           <AppWindow className="h-3.5 w-3.5" />
                           Open Panels
                         </div>
-                        <Badge
-                          variant="secondary"
-                          className="h-4 px-1.5 text-[10px]"
-                        >
+                        <Badge variant="secondary" className="h-4 px-1.5 text-[10px]">
                           {launcherOpenWindows.length}
                         </Badge>
                       </div>
@@ -1823,18 +1678,12 @@ export function ZenShell() {
                                       {entry.title}
                                     </span>
                                     {entry.tabsCount > 1 && (
-                                      <Badge
-                                        variant="secondary"
-                                        className="h-4 px-1 text-[9px]"
-                                      >
+                                      <Badge variant="secondary" className="h-4 px-1 text-[9px]">
                                         {entry.tabsCount} tabs
                                       </Badge>
                                     )}
                                     {entry.isPinned && (
-                                      <Badge
-                                        variant="secondary"
-                                        className="h-4 px-1 text-[9px]"
-                                      >
+                                      <Badge variant="secondary" className="h-4 px-1 text-[9px]">
                                         Pinned
                                       </Badge>
                                     )}
@@ -1889,10 +1738,7 @@ export function ZenShell() {
                           <RotateCcw className="h-3.5 w-3.5" />
                           Minimized
                         </div>
-                        <Badge
-                          variant="secondary"
-                          className="h-4 px-1.5 text-[10px]"
-                        >
+                        <Badge variant="secondary" className="h-4 px-1.5 text-[10px]">
                           {launcherMinimizedWindows.length}
                         </Badge>
                       </div>
@@ -1907,12 +1753,7 @@ export function ZenShell() {
                                   "flex w-full items-center gap-3 rounded-2xl border border-border/50 bg-background/60 px-3 py-2 text-left",
                                   "transition-colors hover:bg-muted/40",
                                 )}
-                                onClick={() =>
-                                  handleRestoreWindow(
-                                    entry.id,
-                                    entry.groupHostId,
-                                  )
-                                }
+                                onClick={() => handleRestoreWindow(entry.id, entry.groupHostId)}
                               >
                                 <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-muted/60 text-muted-foreground">
                                   <RotateCcw className="h-3.5 w-3.5" />
@@ -1926,10 +1767,7 @@ export function ZenShell() {
                                       {entry.title}
                                     </span>
                                     {entry.groupHostId && (
-                                      <Badge
-                                        variant="secondary"
-                                        className="h-4 px-1 text-[9px]"
-                                      >
+                                      <Badge variant="secondary" className="h-4 px-1 text-[9px]">
                                         Tab
                                       </Badge>
                                     )}
@@ -1959,10 +1797,7 @@ export function ZenShell() {
                       <div className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
                         Launch Panels
                       </div>
-                      <Badge
-                        variant="secondary"
-                        className="h-4 px-1.5 text-[10px]"
-                      >
+                      <Badge variant="secondary" className="h-4 px-1.5 text-[10px]">
                         {launcherComponents.length}
                       </Badge>
                     </div>
@@ -1997,10 +1832,7 @@ export function ZenShell() {
                                     {group.pluginId}
                                   </div>
                                 </div>
-                                <Badge
-                                  variant="secondary"
-                                  className="h-4 px-1.5 text-[10px]"
-                                >
+                                <Badge variant="secondary" className="h-4 px-1.5 text-[10px]">
                                   {group.entries.length}
                                 </Badge>
                               </div>
@@ -2028,9 +1860,7 @@ export function ZenShell() {
                                       variant="secondary"
                                       size="sm"
                                       className="h-7 shrink-0 rounded-lg px-2 text-xs"
-                                      onClick={() =>
-                                        handleSpawnComponent(entry)
-                                      }
+                                      onClick={() => handleSpawnComponent(entry)}
                                     >
                                       <Play className="mr-1.5 h-3 w-3" />
                                       Open

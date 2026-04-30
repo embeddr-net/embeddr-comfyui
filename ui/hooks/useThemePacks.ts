@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useState } from "react";
-import { loadThemePacks, type ThemePack } from "../utils/themePacks";
+import { loadThemePacks } from "../utils/themePacks";
+import type { ThemePack } from "../utils/themePacks";
 
 export function useThemePacks(apiBase: string, enabled = true) {
-  const [packs, setPacks] = useState<ThemePack[]>([]);
+  const [packs, setPacks] = useState<Array<ThemePack>>([]);
   const [isLoading, setIsLoading] = useState(false);
 
   const reload = useCallback(async () => {

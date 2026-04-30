@@ -45,53 +45,48 @@ const inlineCssPlugin: any = {
 
     // Inject CSS into main JS file
     if (cssContent && Object.keys(bundle).some((f) => f.endsWith(".js"))) {
-      const jsFile = Object.keys(bundle).find(
-        (f) => f.endsWith(".js") && f.startsWith("main"),
-      );
+      const jsFile = Object.keys(bundle).find((f) => f.endsWith(".js") && f.startsWith("main"));
       if (jsFile) {
         const jsAsset = bundle[jsFile] as any;
 
         // Wrap all CSS rules with a scoping selector
-        const scopedCss = cssContent.replace(
-          /([^{}]+){([^{}]*)}/g,
-          (match, selector, rules) => {
-            // Skip @rules (like @media, @keyframes, @import)
-            if (selector.trim().startsWith("@")) {
-              return match;
-            }
+        const scopedCss = cssContent.replace(/([^{}]+){([^{}]*)}/g, (match, selector, rules) => {
+          // Skip @rules (like @media, @keyframes, @import)
+          if (selector.trim().startsWith("@")) {
+            return match;
+          }
 
-            // Skip if already scoped to avoid double scoping
-            if (selector.includes(".tailwind")) {
-              return match;
-            }
+          // Skip if already scoped to avoid double scoping
+          if (selector.includes(".tailwind")) {
+            return match;
+          }
 
-            // Handle :root selector specially
-            if (selector.trim() === ":root") {
-              return match; // Keep :root global
-            }
+          // Handle :root selector specially
+          if (selector.trim() === ":root") {
+            return match; // Keep :root global
+          }
 
-            // Add scoping to each selector
-            const scopedSelectors = selector
-              .split(",")
-              .map((s) => {
-                const trimmed = s.trim();
-                // Keep html.class / body.class selectors global – these set
-                // CSS custom-property theme variables and must cascade from
-                // the document root, not from a .tailwind wrapper.
-                if (/^(html|body)\./.test(trimmed)) {
-                  return trimmed;
-                }
-                // Use :where(.tailwind) for zero-specificity scoping.
-                // This ensures the extension's utilities only match inside
-                // .tailwind containers, but don't gain higher specificity
-                // than ComfyUI's own utility classes – so contextual
-                // overrides like pt-11.5 after p-2 still work correctly.
-                return `:where(.tailwind) ${trimmed}`;
-              })
-              .join(", ");
-            return `${scopedSelectors} { ${rules} }`;
-          },
-        );
+          // Add scoping to each selector
+          const scopedSelectors = selector
+            .split(",")
+            .map((s) => {
+              const trimmed = s.trim();
+              // Keep html.class / body.class selectors global – these set
+              // CSS custom-property theme variables and must cascade from
+              // the document root, not from a .tailwind wrapper.
+              if (/^(html|body)\./.test(trimmed)) {
+                return trimmed;
+              }
+              // Use :where(.tailwind) for zero-specificity scoping.
+              // This ensures the extension's utilities only match inside
+              // .tailwind containers, but don't gain higher specificity
+              // than ComfyUI's own utility classes – so contextual
+              // overrides like pt-11.5 after p-2 still work correctly.
+              return `:where(.tailwind) ${trimmed}`;
+            })
+            .join(", ");
+          return `${scopedSelectors} { ${rules} }`;
+        });
 
         const styleInject = `(function(){const css=${JSON.stringify(
           scopedCss,
@@ -114,9 +109,6 @@ export default defineConfig({
       "@": fileURLToPath(new URL("./ui", import.meta.url)),
       "@components": path.resolve(__dirname, "ui/components"),
       "@hooks": path.resolve(__dirname, "ui/hooks"),
-      "@embeddr/client-typescript": fileURLToPath(
-        new URL("../clients/client-typescript/src", import.meta.url),
-      ),
     },
   },
   define: {

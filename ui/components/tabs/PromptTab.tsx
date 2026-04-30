@@ -1,18 +1,18 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { AlertCircle, Bot, Loader2, Send, Wrench } from "lucide-react";
-import { Button } from "@embeddr/react-ui/components/ui";
-import { Card } from "@embeddr/react-ui/components/ui";
-import { Input } from "@embeddr/react-ui/components/ui";
-import { Label } from "@embeddr/react-ui/components/ui";
 import {
+  Button,
+  Card,
+  Input,
+  Label,
+  ScrollArea,
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
+  Textarea,
 } from "@embeddr/react-ui/components/ui";
-import { ScrollArea } from "@embeddr/react-ui/components/ui";
-import { Textarea } from "@embeddr/react-ui/components/ui";
 
 type ChatMessage = {
   id?: string;
@@ -85,14 +85,14 @@ export function PromptTab({ endpoint, apiKey, onOpenDocs }: PromptTabProps) {
   const [hasLlmPlugin, setHasLlmPlugin] = useState(false);
   const [pluginCheckError, setPluginCheckError] = useState<string | null>(null);
 
-  const [providers, setProviders] = useState<LlmProvider[]>([]);
-  const [models, setModels] = useState<LlmModel[]>([]);
+  const [providers, setProviders] = useState<Array<LlmProvider>>([]);
+  const [models, setModels] = useState<Array<LlmModel>>([]);
   const [selectedProviderId, setSelectedProviderId] = useState<string>("auto");
   const [selectedModel, setSelectedModel] = useState<string>("auto");
 
   const [systemPrompt, setSystemPrompt] = useState("");
   const [prompt, setPrompt] = useState("");
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [messages, setMessages] = useState<Array<ChatMessage>>([]);
   const [isSending, setIsSending] = useState(false);
 
   const selectedProviderModels = useMemo(() => {
@@ -113,11 +113,7 @@ export function PromptTab({ endpoint, apiKey, onOpenDocs }: PromptTabProps) {
     setPluginCheckError(null);
     try {
       const data = await jsonRequest<any>(endpoint, "/plugins", {}, apiKey);
-      const list = Array.isArray(data)
-        ? data
-        : Array.isArray(data?.items)
-          ? data.items
-          : [];
+      const list = Array.isArray(data) ? data : Array.isArray(data?.items) ? data.items : [];
       const found = list.some((plugin: any) => {
         const id = String(plugin?.id || plugin?.plugin_id || "");
         return id === "embeddr-llm";
@@ -135,12 +131,7 @@ export function PromptTab({ endpoint, apiKey, onOpenDocs }: PromptTabProps) {
     if (!hasLlmPlugin) return;
     try {
       const [providerRes, modelRes] = await Promise.all([
-        jsonRequest<any>(
-          endpoint,
-          "/plugins/embeddr-llm/providers",
-          {},
-          apiKey,
-        ),
+        jsonRequest<any>(endpoint, "/plugins/embeddr-llm/providers", {}, apiKey),
         jsonRequest<any>(endpoint, "/plugins/embeddr-llm/models", {}, apiKey),
       ]);
 
@@ -196,8 +187,7 @@ export function PromptTab({ endpoint, apiKey, onOpenDocs }: PromptTabProps) {
             inputs: {
               prompt: text,
               system_prompt: systemPrompt.trim() || undefined,
-              provider_id:
-                selectedProviderId !== "auto" ? selectedProviderId : undefined,
+              provider_id: selectedProviderId !== "auto" ? selectedProviderId : undefined,
               model: selectedModel !== "auto" ? selectedModel : undefined,
             },
           }),
@@ -240,17 +230,13 @@ export function PromptTab({ endpoint, apiKey, onOpenDocs }: PromptTabProps) {
       if (assistantText) {
         setMessages((prev) =>
           prev.map((message) =>
-            message.id === pendingId
-              ? { role: "assistant", content: assistantText }
-              : message,
+            message.id === pendingId ? { role: "assistant", content: assistantText } : message,
           ),
         );
       } else if (failedText) {
         setMessages((prev) =>
           prev.map((message) =>
-            message.id === pendingId
-              ? { role: "error", content: failedText }
-              : message,
+            message.id === pendingId ? { role: "error", content: failedText } : message,
           ),
         );
       } else {
@@ -305,8 +291,8 @@ export function PromptTab({ endpoint, apiKey, onOpenDocs }: PromptTabProps) {
             <span className="font-medium">LLM chat is not available</span>
           </div>
           <p className="text-sm text-muted-foreground">
-            This tab needs the <strong>embeddr-llm</strong> plugin installed and
-            enabled on your configured instance.
+            This tab needs the <strong>embeddr-llm</strong> plugin installed and enabled on your
+            configured instance.
           </p>
           {pluginCheckError ? (
             <div className="text-xs text-amber-500 flex items-center gap-1">
@@ -352,10 +338,7 @@ export function PromptTab({ endpoint, apiKey, onOpenDocs }: PromptTabProps) {
 
         <div className="space-y-1">
           <Label>Model</Label>
-          <Select
-            value={selectedModel}
-            onValueChange={(value) => setSelectedModel(value)}
-          >
+          <Select value={selectedModel} onValueChange={(value) => setSelectedModel(value)}>
             <SelectTrigger>
               <SelectValue placeholder="Auto" />
             </SelectTrigger>
@@ -424,11 +407,7 @@ export function PromptTab({ endpoint, apiKey, onOpenDocs }: PromptTabProps) {
           disabled={isSending}
         />
         <Button onClick={runChat} disabled={isSending || !prompt.trim()}>
-          {isSending ? (
-            <Loader2 className="w-4 h-4 animate-spin" />
-          ) : (
-            <Send className="w-4 h-4" />
-          )}
+          {isSending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
         </Button>
       </div>
     </div>

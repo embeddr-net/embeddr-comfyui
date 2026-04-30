@@ -1,13 +1,11 @@
 import { useMemo } from "react";
 import { EmbeddrApiClient } from "@embeddr/client-typescript";
+import { proxyFetch } from "../utils/proxyFetch";
 import { useEmbeddrSettings } from "./useEmbeddrSettings";
 import { useEmbeddrLibraries } from "./useEmbeddrLibraries";
 import { useEmbeddrImages } from "./useEmbeddrImages";
-import {
-  useEmbeddrCollections,
-  type Collection,
-} from "./useEmbeddrCollections";
-import { proxyFetch } from "../utils/proxyFetch";
+import { useEmbeddrCollections } from "./useEmbeddrCollections";
+import type { Collection } from "./useEmbeddrCollections";
 import type { ApiMode, LibraryPath, PromptImageRead } from "@types";
 
 export type { PromptImageRead, LibraryPath, ApiMode, Collection };
@@ -16,9 +14,7 @@ interface UseEmbeddrApiProps {
   baseUrl?: string;
 }
 
-export function useEmbeddrApi({
-  baseUrl = "http://localhost:8003",
-}: UseEmbeddrApiProps = {}) {
+export function useEmbeddrApi({ baseUrl = "http://localhost:8003" }: UseEmbeddrApiProps = {}) {
   const settings = useEmbeddrSettings({ baseUrl });
 
   const apiClient = useMemo(
@@ -39,8 +35,7 @@ export function useEmbeddrApi({
           // We can attach the key here, but the proxy will OVERWRITE/Attach it from server-side config.
           // It's safer to rely on server-side config for the key to avoid exposing it in browser network tab
           // if we can. But providing it here doesn't hurt.
-          const key =
-            settings.apiKey || localStorage.getItem("embeddr_api_key");
+          const key = settings.apiKey || localStorage.getItem("embeddr_api_key");
           if (key) {
             // For now we do NOT attach it here to ensure we test the proxy works from server config
             // headers["X-API-Key"] = key;

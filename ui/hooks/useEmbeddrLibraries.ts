@@ -28,9 +28,7 @@ export function useEmbeddrLibraries({
         setLibraries(
           (Array.isArray(data) ? data : []).map((item: any, index: number) => {
             const numericId = Number(item?.id);
-            const label = String(
-              item?.label || item?.name || item?.uri || "Library",
-            );
+            const label = String(item?.label || item?.name || item?.uri || "Library");
             return {
               id: Number.isFinite(numericId) ? numericId : index + 1,
               path: String(item?.uri || ""),

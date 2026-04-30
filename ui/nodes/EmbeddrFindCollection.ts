@@ -8,19 +8,13 @@ app.registerExtension({
       // Add a button to open the dialog
       const onNodeCreated = nodeType.prototype.onNodeCreated;
       nodeType.prototype.onNodeCreated = function () {
-        const r = onNodeCreated
-          ? onNodeCreated.apply(this, arguments)
-          : undefined;
+        const r = onNodeCreated ? onNodeCreated.apply(this, arguments) : undefined;
 
         // Custom Widget for Displaying Collection Info
         // We create a custom widget that just renders text, no input
-        const displayWidget = this.addWidget(
-          "text",
-          "Info",
-          "No Collection Selected",
-          () => {},
-          { serialize: false }
-        );
+        const displayWidget = this.addWidget("text", "Info", "No Collection Selected", () => {}, {
+          serialize: false,
+        });
         if (displayWidget.inputEl) {
           displayWidget.inputEl.readOnly = true;
           displayWidget.inputEl.style.opacity = "0.6";

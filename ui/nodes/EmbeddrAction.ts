@@ -47,9 +47,7 @@ const SKIP_SCHEMA_FIELDS = new Set(["resource", "artifact_id", "artifact_ids"]);
  * payload_json input.
  */
 function syncDynToPayload(node: any) {
-  const payloadWidget = (node.widgets ?? []).find(
-    (w: any) => w.name === "payload_json",
-  );
+  const payloadWidget = (node.widgets ?? []).find((w: any) => w.name === "payload_json");
   if (!payloadWidget) return;
 
   // Parse existing payload_json (user may have typed extra values)
@@ -92,9 +90,7 @@ function syncDynToPayload(node: any) {
  * restore their values from payload_json.
  */
 function syncPayloadToDyn(node: any) {
-  const payloadWidget = (node.widgets ?? []).find(
-    (w: any) => w.name === "payload_json",
-  );
+  const payloadWidget = (node.widgets ?? []).find((w: any) => w.name === "payload_json");
   if (!payloadWidget) return;
 
   let values: Record<string, any> = {};
@@ -141,9 +137,7 @@ function addWidgetForJsonSchemaProp(
   // Resolve type (handle anyOf / allOf / oneOf)
   let type = prop.type as string | undefined;
   if (!type && prop.anyOf) {
-    const nonNull = (prop.anyOf as any[]).find(
-      (s: any) => s.type && s.type !== "null",
-    );
+    const nonNull = (prop.anyOf as Array<any>).find((s: any) => s.type && s.type !== "null");
     if (nonNull) type = nonNull.type;
   }
 
@@ -151,8 +145,7 @@ function addWidgetForJsonSchemaProp(
   const tooltip = prop.description || name;
 
   if (type === "string") ensureDynInput(node, wName, "STRING");
-  else if (type === "integer" || type === "number")
-    ensureDynInput(node, wName, "NUMBER");
+  else if (type === "integer" || type === "number") ensureDynInput(node, wName, "NUMBER");
   else if (type === "boolean") ensureDynInput(node, wName, "BOOLEAN");
   else ensureDynInput(node, wName, "*");
 
@@ -165,9 +158,7 @@ function addWidgetForJsonSchemaProp(
         });
       } else {
         const isLong =
-          (prop.maxLength && prop.maxLength > 200) ||
-          name === "prompt" ||
-          name.includes("json");
+          (prop.maxLength && prop.maxLength > 200) || name === "prompt" || name.includes("json");
         node.addWidget("text", wName, defaultVal ?? "", () => {}, {
           multiline: isLong,
           tooltip,
@@ -270,8 +261,8 @@ interface LotusCapability {
   title: string;
   description?: string;
   plugin?: string;
-  inputs?: LotusIOType[];
-  outputs?: LotusIOType[];
+  inputs?: Array<LotusIOType>;
+  outputs?: Array<LotusIOType>;
   data?: Record<string, any>;
   action?: {
     action?: string;
@@ -279,9 +270,9 @@ interface LotusCapability {
       schema?: Record<string, any>;
       model?: string;
       ui?: {
-        order?: string[];
+        order?: Array<string>;
         widgets?: Record<string, string>;
-        options?: Record<string, string[]>;
+        options?: Record<string, Array<string>>;
       };
     };
     output?: {
@@ -292,11 +283,11 @@ interface LotusCapability {
 }
 
 /** Cached actions list */
-let _actionsCache: LotusCapability[] | null = null;
+let _actionsCache: Array<LotusCapability> | null = null;
 let _actionsCacheTime = 0;
 const CACHE_TTL_MS = 30_000;
 
-async function fetchActions(): Promise<LotusCapability[]> {
+async function fetchActions(): Promise<Array<LotusCapability>> {
   const now = Date.now();
   if (_actionsCache && now - _actionsCacheTime < CACHE_TTL_MS) {
     return _actionsCache;
@@ -311,9 +302,7 @@ async function fetchActions(): Promise<LotusCapability[]> {
     }
 
     const targetUrl = `${baseUrl}/api/v1/lotus/list?kind=action&limit=500`;
-    const resp = await fetch(
-      `/embeddr/proxy?url=${encodeURIComponent(targetUrl)}`,
-    );
+    const resp = await fetch(`/embeddr/proxy?url=${encodeURIComponent(targetUrl)}`);
     if (!resp.ok) {
       console.warn("[Embeddr Action] Proxy returned", resp.status);
       return _actionsCache ?? [];
@@ -321,7 +310,7 @@ async function fetchActions(): Promise<LotusCapability[]> {
     const data = await resp.json();
     _actionsCache = data.items ?? data ?? [];
     _actionsCacheTime = now;
-    return _actionsCache!;
+    return _actionsCache;
   } catch (e) {
     console.warn("[Embeddr Action] Failed to fetch actions:", e);
     return _actionsCache ?? [];
@@ -329,7 +318,7 @@ async function fetchActions(): Promise<LotusCapability[]> {
 }
 
 function buildComboLabel(cap: LotusCapability): string {
-  const parts: string[] = [];
+  const parts: Array<string> = [];
   if (cap.plugin) parts.push(cap.plugin);
   let label = cap.id;
   if (cap.title && cap.title !== cap.id) {
@@ -406,13 +395,7 @@ const TEXT_EXTRACT_KEYS = [
 ];
 
 /** Keys Python checks when extracting artifact IDs. */
-const ARTIFACT_EXTRACT_KEYS = [
-  "artifact_id",
-  "id",
-  "artifact_ids",
-  "ids",
-  "output_artifact_id",
-];
+const ARTIFACT_EXTRACT_KEYS = ["artifact_id", "id", "artifact_ids", "ids", "output_artifact_id"];
 
 /**
  * Relabel the static output slots based on the selected action's
@@ -430,8 +413,7 @@ function updateOutputLabels(node: any, cap: LotusCapability) {
   resetOutputLabels(node);
 
   // Try to get output schema properties
-  const outSchema =
-    cap.action?.output?.schema ?? (cap as any).data?.output?.schema;
+  const outSchema = cap.action?.output?.schema ?? (cap as any).data?.output?.schema;
   const outProps: Record<string, any> | undefined = outSchema?.properties;
 
   // Also check cap.outputs (LotusIOType array)
@@ -497,8 +479,7 @@ function updateOutputLabels(node: any, cap: LotusCapability) {
   }
 
   // ── Add tooltip to result_json showing the model name ──
-  const modelName =
-    cap.action?.output?.model ?? (cap as any).data?.output?.model;
+  const modelName = cap.action?.output?.model ?? (cap as any).data?.output?.model;
   if (modelName && node.outputs[OUTPUT_SLOTS.result_json]) {
     node.outputs[OUTPUT_SLOTS.result_json].tooltip =
       `Full JSON: ${modelName.split(":").pop() ?? modelName}`;
@@ -547,17 +528,14 @@ function createDynamicInputs(node: any, cap: LotusCapability) {
     }
   } else {
     // ── Path B: JSON Schema from action.input.schema ──
-    const jsonSchema =
-      cap.action?.input?.schema ?? (cap as any).data?.input?.schema;
+    const jsonSchema = cap.action?.input?.schema ?? (cap as any).data?.input?.schema;
 
     if (jsonSchema && jsonSchema.properties) {
       const props = jsonSchema.properties as Record<string, any>;
       const requiredSet = new Set(jsonSchema.required ?? []);
 
-      const uiOrder: string[] =
-        cap.action?.input?.ui?.order ??
-        (cap as any).data?.input?.ui?.order ??
-        Object.keys(props);
+      const uiOrder: Array<string> =
+        cap.action?.input?.ui?.order ?? (cap as any).data?.input?.ui?.order ?? Object.keys(props);
 
       const ordered = [
         ...uiOrder.filter((k: string) => k in props),
@@ -566,12 +544,7 @@ function createDynamicInputs(node: any, cap: LotusCapability) {
 
       for (const propName of ordered) {
         if (SKIP_SCHEMA_FIELDS.has(propName)) continue;
-        addWidgetForJsonSchemaProp(
-          node,
-          propName,
-          props[propName],
-          requiredSet.has(propName),
-        );
+        addWidgetForJsonSchemaProp(node, propName, props[propName], requiredSet.has(propName));
       }
     }
   }
@@ -594,9 +567,7 @@ async function populateActionCombo(node: any) {
     options.push(buildComboLabel(cap));
   }
 
-  const existingIdx = (node.widgets ?? []).findIndex(
-    (w: any) => w.name === "action_id",
-  );
+  const existingIdx = (node.widgets ?? []).findIndex((w: any) => w.name === "action_id");
 
   let prevValue = "";
   if (existingIdx >= 0) {
@@ -643,7 +614,7 @@ async function onActionChanged(node: any, value: string) {
     return;
   }
 
-  (node as any)._embeddrActionCap = cap;
+  node._embeddrActionCap = cap;
   createDynamicInputs(node, cap);
   updateOutputLabels(node, cap);
 
@@ -678,9 +649,7 @@ app.registerExtension({
       const result = origOnConfigure?.apply(this, arguments);
 
       populateActionCombo(this).then(() => {
-        const comboWidget = this.widgets?.find(
-          (w: any) => w.name === "action_id",
-        );
+        const comboWidget = this.widgets?.find((w: any) => w.name === "action_id");
         const val = comboWidget?.value;
         if (val && val !== "(select action)" && val !== "") {
           onActionChanged(this, val);

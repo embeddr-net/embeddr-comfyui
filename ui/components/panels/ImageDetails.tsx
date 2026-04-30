@@ -81,9 +81,9 @@ interface ArtifactFeatureRef {
 }
 
 interface ArtifactSignals {
-  annotations: ArtifactAnnotation[];
-  embeddings: ArtifactEmbedding[];
-  features: ArtifactFeatureRef[];
+  annotations: Array<ArtifactAnnotation>;
+  embeddings: Array<ArtifactEmbedding>;
+  features: Array<ArtifactFeatureRef>;
 }
 
 interface DerivedTextSignal {
@@ -147,11 +147,11 @@ function normalizeSignalText(value: unknown) {
 
 function collectDerivedTextSignals(
   artifact: ArtifactDetail | null,
-  annotations: ArtifactAnnotation[],
-  features: ArtifactFeatureRef[],
-): DerivedTextSignal[] {
+  annotations: Array<ArtifactAnnotation>,
+  features: Array<ArtifactFeatureRef>,
+): Array<DerivedTextSignal> {
   const seen = new Set<string>();
-  const signals: DerivedTextSignal[] = [];
+  const signals: Array<DerivedTextSignal> = [];
 
   const pushSignal = (signal: DerivedTextSignal | null) => {
     if (!signal) return;
@@ -193,8 +193,12 @@ function collectDerivedTextSignals(
 
   features.forEach((feature) => {
     const featureText =
-      TEXT_METADATA_KEYS.map((key) => normalizeSignalText(feature.metadata_json?.[key])).find(Boolean) ||
-      (/(caption|summary|ocr|text)/i.test(feature.feature_type) ? normalizeSignalText(feature.name) : null);
+      TEXT_METADATA_KEYS.map((key) => normalizeSignalText(feature.metadata_json?.[key])).find(
+        Boolean,
+      ) ||
+      (/(caption|summary|ocr|text)/i.test(feature.feature_type)
+        ? normalizeSignalText(feature.name)
+        : null);
 
     pushSignal(
       featureText
@@ -230,10 +234,7 @@ export function ImageDetails({
 
   const effectiveApiKey = useMemo(
     () =>
-      apiKey ||
-      (typeof window !== "undefined"
-        ? localStorage.getItem("embeddr_api_key")
-        : null),
+      apiKey || (typeof window !== "undefined" ? localStorage.getItem("embeddr_api_key") : null),
     [apiKey],
   );
 
@@ -298,15 +299,15 @@ export function ImageDetails({
     setSignalsError(null);
 
     Promise.allSettled([
-      fetchJson<ArtifactAnnotation[]>(
+      fetchJson<Array<ArtifactAnnotation>>(
         `${resolvedApiBase}/artifacts/${selectedImage.id}/annotations`,
         effectiveApiKey,
       ),
-      fetchJson<ArtifactEmbedding[]>(
+      fetchJson<Array<ArtifactEmbedding>>(
         `${resolvedApiBase}/artifacts/${selectedImage.id}/embeddings`,
         effectiveApiKey,
       ),
-      fetchJson<ArtifactFeatureRef[]>(
+      fetchJson<Array<ArtifactFeatureRef>>(
         `${resolvedApiBase}/artifacts/${selectedImage.id}/features`,
         effectiveApiKey,
       ),
@@ -315,27 +316,18 @@ export function ImageDetails({
         if (!active) return;
 
         const nextSignals: ArtifactSignals = {
-          annotations:
-            annotationsResult.status === "fulfilled"
-              ? annotationsResult.value
-              : [],
-          embeddings:
-            embeddingsResult.status === "fulfilled" ? embeddingsResult.value : [],
-          features:
-            featuresResult.status === "fulfilled" ? featuresResult.value : [],
+          annotations: annotationsResult.status === "fulfilled" ? annotationsResult.value : [],
+          embeddings: embeddingsResult.status === "fulfilled" ? embeddingsResult.value : [],
+          features: featuresResult.status === "fulfilled" ? featuresResult.value : [],
         };
 
-        const failedRequests = [
-          annotationsResult,
-          embeddingsResult,
-          featuresResult,
-        ].filter((result) => result.status === "rejected");
+        const failedRequests = [annotationsResult, embeddingsResult, featuresResult].filter(
+          (result) => result.status === "rejected",
+        );
 
         setSignals(nextSignals);
         setSignalsError(
-          failedRequests.length > 0
-            ? "Some artifact signals could not be loaded."
-            : null,
+          failedRequests.length > 0 ? "Some artifact signals could not be loaded." : null,
         );
       })
       .catch((error) => {
@@ -360,12 +352,7 @@ export function ImageDetails({
   );
 
   const derivedTextSignals = useMemo(
-    () =>
-      collectDerivedTextSignals(
-        artifact,
-        signals.annotations,
-        signals.features,
-      ),
+    () => collectDerivedTextSignals(artifact, signals.annotations, signals.features),
     [artifact, signals.annotations, signals.features],
   );
 
@@ -433,11 +420,7 @@ export function ImageDetails({
                     onClick={handleCopyPrompt}
                     title="Copy legacy prompt"
                   >
-                    {copiedPrompt ? (
-                      <Check className="h-4 w-4" />
-                    ) : (
-                      <Copy className="h-4 w-4" />
-                    )}
+                    {copiedPrompt ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
                   </Button>
                 )}
 
@@ -447,9 +430,7 @@ export function ImageDetails({
                     size="sm"
                     variant="secondary"
                     className="h-6 whitespace-nowrap text-xs shadow-sm opacity-0 transition-opacity group-hover:opacity-100"
-                    onClick={() =>
-                      onLoadIntoNode(node.id, selectedImage.image_url)
-                    }
+                    onClick={() => onLoadIntoNode(node.id, selectedImage.image_url)}
                   >
                     {node.title}
                     <ArrowBigRightDashIcon className="ml-1 h-3 w-3" />
@@ -533,9 +514,7 @@ export function ImageDetails({
                         {selectedImage.model && (
                           <div>
                             <div className="text-muted-foreground">Model</div>
-                            <div className="truncate font-medium">
-                              {selectedImage.model}
-                            </div>
+                            <div className="truncate font-medium">{selectedImage.model}</div>
                           </div>
                         )}
                       </div>
@@ -601,9 +580,10 @@ export function ImageDetails({
                       <div className="flex flex-wrap gap-1">
                         {(artifact?.tags?.length
                           ? artifact.tags
-                          : (artifact?.metadata_json?.tags as string[]).map(
-                              (tag) => ({ id: tag, name: tag }),
-                            )
+                          : (artifact?.metadata_json?.tags as Array<string>).map((tag) => ({
+                              id: tag,
+                              name: tag,
+                            }))
                         ).map((tag) => (
                           <Badge
                             key={tag.id}
@@ -656,25 +636,19 @@ export function ImageDetails({
                   <div className="text-[10px] uppercase tracking-wide text-muted-foreground">
                     Text Signals
                   </div>
-                  <div className="mt-1 text-lg font-semibold">
-                    {derivedTextSignals.length}
-                  </div>
+                  <div className="mt-1 text-lg font-semibold">{derivedTextSignals.length}</div>
                 </div>
                 <div className="rounded-lg border bg-background/60 p-3">
                   <div className="text-[10px] uppercase tracking-wide text-muted-foreground">
                     Features
                   </div>
-                  <div className="mt-1 text-lg font-semibold">
-                    {signals.features.length}
-                  </div>
+                  <div className="mt-1 text-lg font-semibold">{signals.features.length}</div>
                 </div>
                 <div className="rounded-lg border bg-background/60 p-3">
                   <div className="text-[10px] uppercase tracking-wide text-muted-foreground">
                     Embeddings
                   </div>
-                  <div className="mt-1 text-lg font-semibold">
-                    {signals.embeddings.length}
-                  </div>
+                  <div className="mt-1 text-lg font-semibold">{signals.embeddings.length}</div>
                 </div>
               </div>
 
@@ -700,10 +674,7 @@ export function ImageDetails({
                     {derivedTextSignals.length > 0 ? (
                       <div className="space-y-2">
                         {derivedTextSignals.map((signal) => (
-                          <div
-                            key={signal.id}
-                            className="rounded-lg border bg-background/60 p-3"
-                          >
+                          <div key={signal.id} className="rounded-lg border bg-background/60 p-3">
                             <div className="mb-2 flex items-center gap-2">
                               <Badge variant="outline" className="text-[10px]">
                                 {signal.source}
@@ -730,8 +701,8 @@ export function ImageDetails({
                       </div>
                     ) : (
                       <div className="rounded-lg border border-dashed border-border/60 bg-background/50 px-4 py-6 text-center text-xs text-muted-foreground">
-                        No captions, annotations, or generated text are attached
-                        to this artifact yet.
+                        No captions, annotations, or generated text are attached to this artifact
+                        yet.
                       </div>
                     )}
                   </div>
@@ -746,48 +717,31 @@ export function ImageDetails({
                     {signals.features.length > 0 ? (
                       <div className="space-y-2">
                         {signals.features.map((feature) => (
-                          <div
-                            key={feature.id}
-                            className="rounded-lg border bg-background/60 p-3"
-                          >
+                          <div key={feature.id} className="rounded-lg border bg-background/60 p-3">
                             <div className="flex items-center gap-2">
                               <Badge variant="outline" className="text-[10px]">
                                 {feature.feature_type}
                               </Badge>
-                              <span className="truncate text-xs font-medium">
-                                {feature.name}
-                              </span>
+                              <span className="truncate text-xs font-medium">{feature.name}</span>
                             </div>
                             <div className="mt-2 flex flex-wrap gap-1">
                               {feature.producer_plugin ? (
-                                <Badge
-                                  variant="secondary"
-                                  className="text-[10px]"
-                                >
+                                <Badge variant="secondary" className="text-[10px]">
                                   {feature.producer_plugin}
                                 </Badge>
                               ) : null}
                               {feature.model_name ? (
-                                <Badge
-                                  variant="secondary"
-                                  className="text-[10px]"
-                                >
+                                <Badge variant="secondary" className="text-[10px]">
                                   {feature.model_name}
                                 </Badge>
                               ) : null}
                               {feature.space ? (
-                                <Badge
-                                  variant="secondary"
-                                  className="text-[10px]"
-                                >
+                                <Badge variant="secondary" className="text-[10px]">
                                   {feature.space}
                                 </Badge>
                               ) : null}
                               {feature.vector_dim ? (
-                                <Badge
-                                  variant="secondary"
-                                  className="text-[10px]"
-                                >
+                                <Badge variant="secondary" className="text-[10px]">
                                   {feature.vector_dim}d
                                 </Badge>
                               ) : null}
@@ -829,10 +783,7 @@ export function ImageDetails({
                                 {embedding.vector_dim}d
                               </Badge>
                               {embedding.plugin_name ? (
-                                <Badge
-                                  variant="secondary"
-                                  className="text-[10px]"
-                                >
+                                <Badge variant="secondary" className="text-[10px]">
                                   {embedding.plugin_name}
                                 </Badge>
                               ) : null}

@@ -1,13 +1,13 @@
 import React from "react";
-import { Input } from "@embeddr/react-ui/components/ui";
-import { Button } from "@embeddr/react-ui/components/ui";
-import { Spinner } from "@embeddr/react-ui/components/ui";
 import {
+  Button,
+  Input,
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
+  Spinner,
 } from "@embeddr/react-ui/components/ui";
 import { Globe, ScanEyeIcon, Search, User } from "lucide-react";
 import type { ApiMode, LibraryPath } from "@types";
@@ -47,8 +47,7 @@ export function SearchBar({
       {similarImageId ? (
         <div className="flex items-center justify-between bg-primary/10 p-2 border border-primary/20 h-9">
           <span className="text-xs font-medium text-primary">
-            <ScanEyeIcon className="w-4 h-4 inline-block mr-1" /> Showing
-            similar images
+            <ScanEyeIcon className="w-4 h-4 inline-block mr-1" /> Showing similar images
           </span>
           <Button
             variant="ghost"
@@ -76,10 +75,7 @@ export function SearchBar({
 
       <div className="flex gap-1">
         {mode === "local" ? (
-          <Select
-            value={selectedCollectionId}
-            onValueChange={setSelectedCollectionId}
-          >
+          <Select value={selectedCollectionId} onValueChange={setSelectedCollectionId}>
             <SelectTrigger className="h-8 w-full">
               <SelectValue placeholder="Select collection" />
             </SelectTrigger>

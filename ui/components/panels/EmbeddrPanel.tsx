@@ -1,20 +1,7 @@
 import React, { useEffect, useState } from "react";
-import { cn } from "@embeddr/react-ui";
-import {
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
-} from "@embeddr/react-ui/components/ui";
-import { useExternalNav, useImageDialog } from "@embeddr/react-ui";
-import {
-  GlobeIcon,
-  MessageCircleIcon,
-  Search,
-  Settings,
-  LayoutTemplate,
-} from "lucide-react";
-import { Button } from "@embeddr/react-ui/components/ui";
+import { cn, useExternalNav, useImageDialog } from "@embeddr/react-ui";
+import { Button, Tabs, TabsContent, TabsList, TabsTrigger } from "@embeddr/react-ui/components/ui";
+import { GlobeIcon, LayoutTemplate, MessageCircleIcon, Search, Settings } from "lucide-react";
 import { useEmbeddrApi } from "@hooks/useEmbeddrApi";
 import { SettingsForm } from "../tabs/SettingsForm";
 import { ExploreTab } from "../tabs/ExploreTab";
@@ -67,8 +54,7 @@ export default function EmbeddrPanel() {
   // Initial fetch and refetch on change
   useEffect(() => {
     if (configLoaded) {
-      const libId =
-        selectedLibrary === "all" ? null : parseInt(selectedLibrary);
+      const libId = selectedLibrary === "all" ? null : parseInt(selectedLibrary);
       fetchImages(true, searchQuery, viewMode, libId, similarImageId);
     }
   }, [viewMode, configLoaded, selectedLibrary, mode, similarImageId]);
@@ -77,11 +63,8 @@ export default function EmbeddrPanel() {
     await saveSettings(endpoint, mode, gridSize, gridPreviewContain, apiKey);
   };
 
-  const dispatchShellEvent = (
-    name: string,
-    detail?: Record<string, unknown>,
-  ) => {
-    const targets: Window[] = [];
+  const dispatchShellEvent = (name: string, detail?: Record<string, unknown>) => {
+    const targets: Array<Window> = [];
     console.log("[EmbeddrPanel] Dispatching event", name, detail);
     const addTarget = (target?: Window | null) => {
       if (!target) return;
@@ -107,10 +90,7 @@ export default function EmbeddrPanel() {
   };
 
   return (
-    <div
-      className="flex flex-col h-full text-foreground"
-      style={{ contain: "none" }}
-    >
+    <div className="flex flex-col h-full text-foreground" style={{ contain: "none" }}>
       <Tabs
         value={activeTab}
         onValueChange={setActiveTab}
@@ -119,16 +99,10 @@ export default function EmbeddrPanel() {
         <div className="pt-2 flex flex-col gap-2 p-2 pb-0!">
           <div className="flex items-center gap-2">
             <TabsList className="flex gap-1 w-full justify-start">
-              <TabsTrigger
-                value="explore"
-                className="max-w-fit items-center gap-2"
-              >
+              <TabsTrigger value="explore" className="max-w-fit items-center gap-2">
                 <Search className="w-4 h-4" />
               </TabsTrigger>
-              <TabsTrigger
-                value="prompt"
-                className="max-w-fit items-center gap-2"
-              >
+              <TabsTrigger value="prompt" className="max-w-fit items-center gap-2">
                 <MessageCircleIcon className="w-4 h-4" />
               </TabsTrigger>
             </TabsList>
@@ -143,10 +117,7 @@ export default function EmbeddrPanel() {
             <Button
               variant="link"
               size="icon"
-              className={cn(
-                "ml-auto",
-                activeTab === "settings" ? "bg-primary/50" : "",
-              )}
+              className={cn("ml-auto", activeTab === "settings" ? "bg-primary/50" : "")}
               onClick={() => setActiveTab("settings")}
             >
               <Settings className="w-4 h-4" />
@@ -186,9 +157,7 @@ export default function EmbeddrPanel() {
           <PromptTab
             endpoint={endpoint}
             apiKey={apiKey}
-            onOpenDocs={() =>
-              openExternal(`${endpoint.replace(/\/+$/, "")}/docs`)
-            }
+            onOpenDocs={() => openExternal(`${endpoint.replace(/\/+$/, "")}/docs`)}
           />
         </TabsContent>
 

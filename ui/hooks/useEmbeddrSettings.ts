@@ -1,14 +1,14 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 // @ts-ignore
 import { app } from "../../../scripts/app.js";
-import type { ApiMode } from "@types";
 import {
-  applyThemePackCss,
   applyThemePackComfyBridge,
+  applyThemePackCss,
   applyThemePackTokens,
   clearThemePackTokens,
   loadThemePacks,
 } from "../utils/themePacks";
+import type { ApiMode } from "@types";
 
 interface UseEmbeddrSettingsProps {
   baseUrl?: string;
@@ -47,7 +47,7 @@ export function useEmbeddrSettings({
     return localStorage.getItem("embeddr_theme_pack") || "";
   });
 
-  const appliedTokenKeysRef = useRef<string[]>([]);
+  const appliedTokenKeysRef = useRef<Array<string>>([]);
 
   const [configLoaded, setConfigLoaded] = useState(false);
 
@@ -62,9 +62,7 @@ export function useEmbeddrSettings({
     const roots = [
       document.documentElement,
       document.body,
-      ...Array.from(
-        document.querySelectorAll<HTMLElement>(".embeddr-theme-root"),
-      ),
+      ...Array.from(document.querySelectorAll<HTMLElement>(".embeddr-theme-root")),
     ];
     roots.forEach((root) => {
       if (theme === "dark") {
@@ -102,9 +100,7 @@ export function useEmbeddrSettings({
       const targets = [
         document.documentElement,
         document.body,
-        ...Array.from(
-          document.querySelectorAll<HTMLElement>(".embeddr-theme-root"),
-        ),
+        ...Array.from(document.querySelectorAll<HTMLElement>(".embeddr-theme-root")),
       ];
 
       clearThemePackTokens(targets, appliedTokenKeysRef.current);
@@ -152,9 +148,7 @@ export function useEmbeddrSettings({
         const data = await res.json();
 
         if (data.endpoint) {
-          const normalized = normalizeEndpoint(
-            new URL(data.endpoint).toString(),
-          );
+          const normalized = normalizeEndpoint(new URL(data.endpoint).toString());
           setEndpoint(normalized);
           localStorage.setItem("embeddr_endpoint", normalized);
         }
@@ -201,10 +195,7 @@ export function useEmbeddrSettings({
       localStorage.setItem("embeddr_endpoint", normalizedEndpoint);
       localStorage.setItem("embeddr_mode", newMode);
       localStorage.setItem("embeddr_grid_size", newGridSize.toString());
-      localStorage.setItem(
-        "embeddr_grid_preview_contain",
-        newGridPreviewContain.toString(),
-      );
+      localStorage.setItem("embeddr_grid_preview_contain", newGridPreviewContain.toString());
 
       const payload: any = {
         endpoint: normalizedEndpoint,

@@ -1,9 +1,7 @@
 import React, { useEffect, useRef } from "react";
-import { ScrollArea } from "@embeddr/react-ui/components/ui";
+import { Button, ScrollArea } from "@embeddr/react-ui/components/ui";
 import { Eye, PenLineIcon } from "lucide-react";
-import { Button } from "@embeddr/react-ui/components/ui";
-import { cn } from "@embeddr/react-ui";
-import { EmbeddrDnDTypes } from "@embeddr/react-ui";
+import { EmbeddrDnDTypes, cn } from "@embeddr/react-ui";
 import { AuthorizedImage } from "./AuthorizedImage";
 
 import type { PromptImageRead } from "@hooks/useEmbeddrApi";

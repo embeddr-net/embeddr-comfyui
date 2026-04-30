@@ -1,18 +1,18 @@
 import React, { useEffect, useState } from "react";
 import {
+  Button,
   Card,
   CardDescription,
   CardHeader,
   CardTitle,
+  Input,
+  ScrollArea,
 } from "@embeddr/react-ui/components/ui";
-import { ScrollArea } from "@embeddr/react-ui/components/ui";
-import { Input } from "@embeddr/react-ui/components/ui";
-import { Button } from "@embeddr/react-ui/components/ui";
-import { Folder, Search, Plus } from "lucide-react";
+import { Folder, Plus, Search } from "lucide-react";
 import type { Collection } from "../../hooks/useEmbeddrCollections";
 
 interface CollectionSelectorProps {
-  collections: Collection[];
+  collections: Array<Collection>;
   loading: boolean;
   onSelect: (collection: Collection) => void;
   fetchCollections: () => void;
@@ -46,7 +46,7 @@ export function CollectionSelector({
   };
 
   const filtered = collections.filter((c) =>
-    (c.label || "").toLowerCase().includes(search.toLowerCase())
+    (c.label || "").toLowerCase().includes(search.toLowerCase()),
   );
 
   return (
@@ -88,9 +88,7 @@ export function CollectionSelector({
 
       <ScrollArea className="flex-1">
         {loading ? (
-          <div className="flex items-center justify-center h-40">
-            Scanning collections...
-          </div>
+          <div className="flex items-center justify-center h-40">Scanning collections...</div>
         ) : filtered.length === 0 ? (
           <div className="flex flex-col items-center justify-center p-8 text-muted-foreground">
             <div className="mb-2">No collections found</div>
@@ -109,10 +107,7 @@ export function CollectionSelector({
                     <Folder className="h-6 w-6 text-primary" />
                   </div>
                   <div className="flex-1 overflow-hidden">
-                    <CardTitle
-                      className="truncate text-base"
-                      title={collection.label}
-                    >
+                    <CardTitle className="truncate text-base" title={collection.label}>
                       {collection.label}
                     </CardTitle>
                     <CardDescription className="text-xs mt-1">

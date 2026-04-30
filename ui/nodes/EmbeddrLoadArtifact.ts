@@ -1,6 +1,6 @@
 // @ts-ignore
-import { app } from "../../../scripts/app.js";
 import { EmbeddrDnDTypes } from "@embeddr/react-ui";
+import { app } from "../../../scripts/app.js";
 import { registerNodeDragAndDrop } from "../utils/nodeDragAndDrop.js";
 
 app.registerExtension({
@@ -10,9 +10,7 @@ app.registerExtension({
       // Add a button to open the dialog
       const onNodeCreated = nodeType.prototype.onNodeCreated;
       nodeType.prototype.onNodeCreated = function () {
-        const r = onNodeCreated
-          ? onNodeCreated.apply(this, arguments)
-          : undefined;
+        const r = onNodeCreated ? onNodeCreated.apply(this, arguments) : undefined;
 
         // Add button widget
         this.addWidget("button", "Search Image", "search", () => {
@@ -51,10 +49,7 @@ app.registerExtension({
             if (artifactRaw) {
               try {
                 const parsed = JSON.parse(artifactRaw);
-                id =
-                  parsed?.id?.toString?.() ||
-                  parsed?.artifact_id?.toString?.() ||
-                  "";
+                id = parsed?.id?.toString?.() || parsed?.artifact_id?.toString?.() || "";
               } catch {
                 id = "";
               }
@@ -62,9 +57,7 @@ app.registerExtension({
           }
 
           if (id) {
-            const widget = node.widgets?.find(
-              (w: any) => w.name === "artifact_id",
-            );
+            const widget = node.widgets?.find((w: any) => w.name === "artifact_id");
             if (widget) {
               widget.value = id;
               if (widget.callback) {

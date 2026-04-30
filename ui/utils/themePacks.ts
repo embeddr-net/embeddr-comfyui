@@ -23,27 +23,21 @@ export type ThemePack = {
 };
 
 export type ThemePackIndex = {
-  packs: ThemePack[];
+  packs: Array<ThemePack>;
 };
 
 const THEME_STYLE_ID = "embeddr-theme-pack-css";
 const THEME_BRIDGE_STYLE_ID = "embeddr-theme-pack-bridge";
 
-const TOKEN_FALLBACKS: Record<string, string[]> = {
+const TOKEN_FALLBACKS: Record<string, Array<string>> = {
   "--background": ["--base-background", "--bg-color", "--content-bg"],
   "--foreground": ["--base-foreground", "--fg-color", "--content-fg"],
   "--primary": ["--primary-background", "--brand-blue", "--accent-primary"],
   "--primary-foreground": ["--button-surface-contrast", "--base-foreground"],
-  "--secondary": [
-    "--secondary-background",
-    "--component-node-widget-background",
-  ],
+  "--secondary": ["--secondary-background", "--component-node-widget-background"],
   "--secondary-foreground": ["--component-node-foreground", "--foreground"],
   "--muted": ["--muted-background", "--component-node-widget-background"],
-  "--muted-foreground": [
-    "--text-secondary",
-    "--component-node-foreground-secondary",
-  ],
+  "--muted-foreground": ["--text-secondary", "--component-node-foreground-secondary"],
   "--accent": ["--accent-background", "--component-node-surface"],
   "--accent-foreground": ["--component-node-foreground", "--foreground"],
   "--border": ["--border-default", "--node-component-border"],
@@ -52,7 +46,7 @@ const TOKEN_FALLBACKS: Record<string, string[]> = {
   "--card-foreground": ["--component-node-foreground", "--foreground"],
 };
 
-const COMFY_MAPPINGS: Array<[string, string[]]> = [
+const COMFY_MAPPINGS: Array<[string, Array<string>]> = [
   ["--component-node-background", ["--card", "--background"]],
   ["--component-node-border", ["--border", "--node-component-border"]],
   ["--component-node-foreground", ["--card-foreground", "--foreground"]],
@@ -78,14 +72,8 @@ const COMFY_MAPPINGS: Array<[string, string[]]> = [
   ["--bg-color", ["--background"]],
   ["--fg-color", ["--foreground"]],
   ["--p-primary-color", ["--primary"]],
-  [
-    "--p-primary-hover-color",
-    ["--primary-background-hover", "--accent", "--primary"],
-  ],
-  [
-    "--p-primary-active-color",
-    ["--primary-background-hover", "--accent", "--primary"],
-  ],
+  ["--p-primary-hover-color", ["--primary-background-hover", "--accent", "--primary"]],
+  ["--p-primary-active-color", ["--primary-background-hover", "--accent", "--primary"]],
   ["--p-primary-contrast-color", ["--primary-foreground", "--foreground"]],
   ["--p-surface-0", ["--background"]],
   ["--p-surface-100", ["--card", "--secondary"]],
@@ -103,14 +91,8 @@ const COMFY_MAPPINGS: Array<[string, string[]]> = [
   ["--p-text-color", ["--foreground"]],
   ["--p-text-muted-color", ["--muted-foreground"]],
   ["--p-button-primary-background", ["--primary"]],
-  [
-    "--p-button-primary-hover-background",
-    ["--primary-background-hover", "--accent", "--primary"],
-  ],
-  [
-    "--p-button-primary-active-background",
-    ["--primary-background-hover", "--accent", "--primary"],
-  ],
+  ["--p-button-primary-hover-background", ["--primary-background-hover", "--accent", "--primary"]],
+  ["--p-button-primary-active-background", ["--primary-background-hover", "--accent", "--primary"]],
   ["--p-button-primary-border-color", ["--primary"]],
   [
     "--p-button-primary-hover-border-color",
@@ -130,24 +112,15 @@ const COMFY_MAPPINGS: Array<[string, string[]]> = [
   ["--p-button-secondary-hover-border-color", ["--border"]],
   ["--p-button-secondary-active-border-color", ["--border"]],
   ["--p-button-secondary-color", ["--secondary-foreground", "--foreground"]],
-  [
-    "--p-button-secondary-hover-color",
-    ["--secondary-foreground", "--foreground"],
-  ],
-  [
-    "--p-button-secondary-active-color",
-    ["--secondary-foreground", "--foreground"],
-  ],
+  ["--p-button-secondary-hover-color", ["--secondary-foreground", "--foreground"]],
+  ["--p-button-secondary-active-color", ["--secondary-foreground", "--foreground"]],
   ["--p-togglebutton-background", ["--secondary", "--input"]],
   ["--p-togglebutton-border-color", ["--border"]],
   ["--p-togglebutton-color", ["--foreground"]],
   ["--p-togglebutton-hover-background", ["--accent", "--secondary"]],
   ["--p-togglebutton-hover-border-color", ["--border"]],
   ["--p-togglebutton-hover-color", ["--foreground"]],
-  [
-    "--p-togglebutton-checked-background",
-    ["--primary-background-hover", "--accent", "--primary"],
-  ],
+  ["--p-togglebutton-checked-background", ["--primary-background-hover", "--accent", "--primary"]],
   [
     "--p-togglebutton-checked-border-color",
     ["--primary-background-hover", "--accent", "--primary"],
@@ -181,7 +154,7 @@ const resolveAssetBase = (apiBase: string) => {
   return trimmed.replace(/\/api\/v1$/, "");
 };
 
-export async function loadThemePacks(apiBase: string): Promise<ThemePack[]> {
+export async function loadThemePacks(apiBase: string): Promise<Array<ThemePack>> {
   const packs = new Map<string, ThemePack>();
 
   const addPack = (pack?: ThemePack) => {
@@ -206,31 +179,19 @@ export async function loadThemePacks(apiBase: string): Promise<ThemePack[]> {
   const normalized: ThemePackIndex = {
     packs: (data.packs || []).map((pack) => {
       const iconUrl =
-        pack.iconUrl ||
-        (pack.icon ? `${assetBase}/themes/${pack.id}/${pack.icon}` : undefined);
+        pack.iconUrl || (pack.icon ? `${assetBase}/themes/${pack.id}/${pack.icon}` : undefined);
       const bannerUrl =
         pack.bannerUrl ||
-        (pack.banner
-          ? `${assetBase}/themes/${pack.id}/${pack.banner}`
-          : undefined);
+        (pack.banner ? `${assetBase}/themes/${pack.id}/${pack.banner}` : undefined);
       const cssUrl =
         pack.cssUrl ||
-        (pack.cssFile
-          ? `${assetBase}/themes/${pack.id}/${pack.cssFile}`
-          : undefined);
+        (pack.cssFile ? `${assetBase}/themes/${pack.id}/${pack.cssFile}` : undefined);
 
       return {
         ...pack,
-        iconUrl:
-          iconUrl && iconUrl.startsWith("/")
-            ? `${assetBase}${iconUrl}`
-            : iconUrl,
-        bannerUrl:
-          bannerUrl && bannerUrl.startsWith("/")
-            ? `${assetBase}${bannerUrl}`
-            : bannerUrl,
-        cssUrl:
-          cssUrl && cssUrl.startsWith("/") ? `${assetBase}${cssUrl}` : cssUrl,
+        iconUrl: iconUrl && iconUrl.startsWith("/") ? `${assetBase}${iconUrl}` : iconUrl,
+        bannerUrl: bannerUrl && bannerUrl.startsWith("/") ? `${assetBase}${bannerUrl}` : bannerUrl,
+        cssUrl: cssUrl && cssUrl.startsWith("/") ? `${assetBase}${cssUrl}` : cssUrl,
       };
     }),
   };
@@ -275,9 +236,9 @@ export function applyThemePackCss(pack?: ThemePack | null) {
         const link = document.createElement("link");
         link.id = THEME_STYLE_ID;
         link.rel = "stylesheet";
-        link.href = pack.cssUrl as string;
+        link.href = pack.cssUrl;
         document.head.appendChild(link);
-        // eslint-disable-next-line no-console
+
         console.warn(
           "[themePacks] proxyFetch failed for theme css, falling back to direct link",
           err,
@@ -288,7 +249,7 @@ export function applyThemePackCss(pack?: ThemePack | null) {
 
 function selectTokenValue(
   tokenMap: Record<string, string>,
-  keys: string[],
+  keys: Array<string>,
 ): string | undefined {
   for (const key of keys) {
     const value = tokenMap[key];
@@ -299,10 +260,7 @@ function selectTokenValue(
   return undefined;
 }
 
-function resolveThemeTokens(
-  pack: ThemePack | null | undefined,
-  mode: "light" | "dark",
-) {
+function resolveThemeTokens(pack: ThemePack | null | undefined, mode: "light" | "dark") {
   if (!pack?.tokens) return null;
   const rawTokens =
     (mode === "dark" ? pack.tokens.dark : pack.tokens.light) ||
@@ -341,12 +299,12 @@ function resolveThemeTokens(
 }
 
 export function applyThemePackTokens(
-  targets: HTMLElement[],
+  targets: Array<HTMLElement>,
   pack: ThemePack | null | undefined,
   mode: "light" | "dark",
 ) {
   const tokens = resolveThemeTokens(pack, mode);
-  if (!tokens) return [] as string[];
+  if (!tokens) return [] as Array<string>;
   const keys = Object.keys(tokens);
   targets.forEach((target) => {
     Object.entries(tokens).forEach(([key, value]) => {
@@ -357,7 +315,7 @@ export function applyThemePackTokens(
   return keys;
 }
 
-export function clearThemePackTokens(targets: HTMLElement[], keys: string[]) {
+export function clearThemePackTokens(targets: Array<HTMLElement>, keys: Array<string>) {
   if (!keys.length) return;
   targets.forEach((target) => {
     keys.forEach((key) => target.style.removeProperty(key));

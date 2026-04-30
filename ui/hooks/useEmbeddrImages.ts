@@ -1,15 +1,13 @@
 import { useCallback, useRef, useState } from "react";
+import { app } from "../../../scripts/app.js";
 import type { EmbeddrApiClient } from "@embeddr/client-typescript";
 // @ts-ignore
-import { app } from "../../../scripts/app.js";
 import type { ApiMode, PromptImageRead } from "@types";
 
 const PAGE_SIZE = 20;
 
 const proxifyImageUrl = (url: string) =>
-  url.startsWith("http")
-    ? `/embeddr/proxy?url=${encodeURIComponent(url)}`
-    : url;
+  url.startsWith("http") ? `/embeddr/proxy?url=${encodeURIComponent(url)}` : url;
 
 const normalizePromptImage = (
   item: any,
@@ -52,9 +50,7 @@ export function useEmbeddrImages({
   const loadingRef = useRef(false);
   const pageRef = useRef(1);
   const [hasMore, setHasMore] = useState(true);
-  const [similarImageId, setSimilarImageId] = useState<string | number | null>(
-    null,
-  );
+  const [similarImageId, setSimilarImageId] = useState<string | number | null>(null);
   const failureCountRef = useRef(0);
   const nextAllowedFetchRef = useRef(0);
 
@@ -97,8 +93,7 @@ export function useEmbeddrImages({
           baseUrl = `${baseUrl}/api/v1`;
         }
 
-        const currentSimilarId =
-          similarId !== undefined ? similarId : similarImageId;
+        const currentSimilarId = similarId !== undefined ? similarId : similarImageId;
 
         let url = "";
         let method = "GET";
@@ -126,10 +121,13 @@ export function useEmbeddrImages({
           params.set("limit", String(ids.length));
           params.set("media_type", "image");
           ids.forEach((id) => params.append("ids", String(id)));
-          const listedResponse = await fetchWithProxy(`${baseUrl}/artifacts/?${params.toString()}`, {
-            method: "GET",
-            headers,
-          });
+          const listedResponse = await fetchWithProxy(
+            `${baseUrl}/artifacts/?${params.toString()}`,
+            {
+              method: "GET",
+              headers,
+            },
+          );
           if (!listedResponse.ok) {
             throw new Error(`Failed to fetch artifacts: ${listedResponse.status}`);
           }
@@ -220,9 +218,7 @@ export function useEmbeddrImages({
 
         // Fallback for Similar Search if plugin missing (404)
         if (!response.ok && currentSimilarId && response.status === 404) {
-          console.warn(
-            "Embeddr Search plugin not found, falling back to latest",
-          );
+          console.warn("Embeddr Search plugin not found, falling back to latest");
           url = `${baseUrl}/artifacts/?media_type=image&sort=new&limit=${PAGE_SIZE}&offset=${offset}`;
           method = "GET";
           body = undefined;
@@ -231,9 +227,7 @@ export function useEmbeddrImages({
 
         // Fallback for Text Search if plugin missing (404)
         if (!response.ok && searchQuery && response.status === 404) {
-          console.warn(
-            "Embeddr Search plugin not found, falling back to simple search",
-          );
+          console.warn("Embeddr Search plugin not found, falling back to simple search");
           url = `${baseUrl}/artifacts/search?q=${encodeURIComponent(
             searchQuery,
           )}&limit=${PAGE_SIZE}&offset=${offset}`;
@@ -257,12 +251,8 @@ export function useEmbeddrImages({
             let artifactItems = rawItems;
             if (needsArtifactLookup && artifactIds.length) {
               const resolvedItems = await fetchArtifactsByIds(artifactIds);
-              const byId = new Map(
-                resolvedItems.map((item: any) => [String(item.id), item]),
-              );
-              artifactItems = artifactIds
-                .map((id) => byId.get(String(id)))
-                .filter(Boolean);
+              const byId = new Map(resolvedItems.map((item: any) => [String(item.id), item]));
+              artifactItems = artifactIds.map((id) => byId.get(String(id))).filter(Boolean);
             }
 
             items = mapArtifacts(artifactItems);
@@ -298,17 +288,13 @@ export function useEmbeddrImages({
       } catch (error) {
         console.error("Error fetching images:", error);
         failureCountRef.current += 1;
-        const backoffMs = Math.min(
-          60000,
-          2000 * 2 ** (failureCountRef.current - 1),
-        );
+        const backoffMs = Math.min(60000, 2000 * 2 ** (failureCountRef.current - 1));
         nextAllowedFetchRef.current = Date.now() + backoffMs;
         if (app.extensionManager?.toast) {
           app.extensionManager.toast.add({
             severity: "error",
             summary: "Fetch Failed",
-            detail:
-              "Could not load images. Check your API settings and connection.",
+            detail: "Could not load images. Check your API settings and connection.",
             life: 5000,
           });
         }

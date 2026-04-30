@@ -1,23 +1,23 @@
 import React, { useCallback, useEffect, useState } from "react";
-import { Input } from "@embeddr/react-ui/components/ui";
-import { Label } from "@embeddr/react-ui/components/ui";
-import { Button } from "@embeddr/react-ui/components/ui";
-import { Badge } from "@embeddr/react-ui/components/ui";
-import { Slider } from "@embeddr/react-ui/components/ui";
-import { Switch } from "@embeddr/react-ui/components/ui";
 import {
+  Badge,
+  Button,
+  Input,
+  Label,
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
+  Slider,
+  Switch,
 } from "@embeddr/react-ui/components/ui";
 
-import { Moon, Server, Sun, Shield, LogOut, User } from "lucide-react";
+import { LogOut, Moon, Server, Shield, Sun, User } from "lucide-react";
 import { createEmbeddrOAuth } from "@embeddr/client-typescript";
+import { useThemePacks } from "@hooks/useThemePacks";
 import { proxyFetch } from "../../utils/proxyFetch";
 import type { ApiMode } from "@hooks/useEmbeddrApi";
-import { useThemePacks } from "@hooks/useThemePacks";
 
 const OAUTH_CLIENT_ID = "embeddr:comfyui";
 
@@ -109,7 +109,7 @@ function EmbeddrConnectionSection({
       .catch((e) => {
         console.error("OAuth callback failed:", e);
       });
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, []);
 
   const handleOAuthConnect = async () => {
     console.log("[Embeddr] OAuth connect clicked", { endpoint });
@@ -161,16 +161,12 @@ function EmbeddrConnectionSection({
         <div className="rounded-md border p-3 space-y-2">
           <div className="flex items-center gap-2.5">
             <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
-              <span className="text-[10px] font-semibold text-primary">
-                {initials}
-              </span>
+              <span className="text-[10px] font-semibold text-primary">{initials}</span>
             </div>
             <div className="min-w-0 flex-1">
               <div className="text-xs font-medium truncate">{displayName}</div>
               <div className="text-[10px] text-muted-foreground truncate">
-                {profile.operator_name && (
-                  <span>{profile.operator_name} &middot; </span>
-                )}
+                {profile.operator_name && <span>{profile.operator_name} &middot; </span>}
                 {profile.instance_name}
               </div>
             </div>
@@ -178,23 +174,14 @@ function EmbeddrConnectionSection({
               connected
             </Badge>
           </div>
-          <Button
-            variant="outline"
-            size="sm"
-            className="w-full text-xs"
-            onClick={handleDisconnect}
-          >
+          <Button variant="outline" size="sm" className="w-full text-xs" onClick={handleDisconnect}>
             <LogOut className="h-3 w-3 mr-1.5" />
             Disconnect
           </Button>
         </div>
       ) : (
         <div className="rounded-md border border-dashed p-3 space-y-2">
-          <Button
-            className="w-full"
-            onClick={handleOAuthConnect}
-            disabled={checking || !endpoint}
-          >
+          <Button className="w-full" onClick={handleOAuthConnect} disabled={checking || !endpoint}>
             <Shield className="h-4 w-4 mr-2" />
             {checking ? "Checking..." : "Connect to Embeddr"}
           </Button>
@@ -203,9 +190,7 @@ function EmbeddrConnectionSection({
           </p>
           {showManualKey && (
             <div className="space-y-1 pt-1 border-t">
-              <p className="text-[10px] text-muted-foreground">
-                Or enter an API key manually:
-              </p>
+              <p className="text-[10px] text-muted-foreground">Or enter an API key manually:</p>
               <Input
                 type="password"
                 placeholder="em_..."
@@ -305,11 +290,7 @@ export function SettingsForm({
         </p>
       </div>
 
-      <EmbeddrConnectionSection
-        endpoint={endpoint}
-        apiKey={apiKey}
-        setApiKey={setApiKey}
-      />
+      <EmbeddrConnectionSection endpoint={endpoint} apiKey={apiKey} setApiKey={setApiKey} />
 
       <div className="space-y-2">
         <Label htmlFor="grid-size">Grid Columns</Label>
@@ -324,9 +305,7 @@ export function SettingsForm({
           />{" "}
           <span className="w-6 text-right">{gridSize}</span>
         </div>
-        <p className="text-xs text-muted-foreground">
-          Number of columns in the image grid.
-        </p>
+        <p className="text-xs text-muted-foreground">Number of columns in the image grid.</p>
       </div>
       <div className="space-y-2">
         <Label htmlFor="grid-preview-contain">Grid Preview Contain</Label>
@@ -337,9 +316,7 @@ export function SettingsForm({
             checked={gridPreviewContain}
             onCheckedChange={(value) => setGridPreviewContain(value)}
           />
-          <span className="w-6 text-right">
-            {gridPreviewContain ? "Contain" : "Cover"}
-          </span>
+          <span className="w-6 text-right">{gridPreviewContain ? "Contain" : "Cover"}</span>
         </div>
         <p className="text-xs text-muted-foreground">
           Switch between contain and cover for image previews.
@@ -372,15 +349,11 @@ export function SettingsForm({
         <Label htmlFor="theme-pack">Theme Pack</Label>
         <Select
           value={themePackId || "default"}
-          onValueChange={(value) =>
-            setThemePackId(value === "default" ? "" : value)
-          }
+          onValueChange={(value) => setThemePackId(value === "default" ? "" : value)}
           disabled={isLoading || !hasPacks}
         >
           <SelectTrigger id="theme-pack">
-            <SelectValue
-              placeholder={isLoading ? "Loading..." : "Select theme pack"}
-            />
+            <SelectValue placeholder={isLoading ? "Loading..." : "Select theme pack"} />
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="default">Default</SelectItem>

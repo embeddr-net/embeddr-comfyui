@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useCallback, useState } from "react";
 import type { EmbeddrApiClient } from "@embeddr/client-typescript";
 
 export interface Collection {
@@ -23,7 +23,7 @@ export function useEmbeddrCollections({
   apiClient,
   apiKey,
 }: UseEmbeddrCollectionsProps) {
-  const [collections, setCollections] = useState<Collection[]>([]);
+  const [collections, setCollections] = useState<Array<Collection>>([]);
   const [loadingCollections, setLoadingCollections] = useState(false);
 
   const fetchCollections = useCallback(async () => {
@@ -91,9 +91,7 @@ export function useEmbeddrCollections({
           await apiClient.collections.add({
             label,
             type_name: "collection:mix",
-            uri: `embeddr:///collections/${label
-              .toLowerCase()
-              .replace(/\s/g, "_")}_${Date.now()}`,
+            uri: `embeddr:///collections/${label.toLowerCase().replace(/\s/g, "_")}_${Date.now()}`,
           });
           await fetchCollections();
           return true;
@@ -109,9 +107,7 @@ export function useEmbeddrCollections({
         const payload = {
           label: label,
           type_name: "collection:mix", // Default to simple mix
-          uri: `embeddr:///collections/${label
-            .toLowerCase()
-            .replace(/\s/g, "_")}_${Date.now()}`,
+          uri: `embeddr:///collections/${label.toLowerCase().replace(/\s/g, "_")}_${Date.now()}`,
         };
 
         let baseUrl = apiBase;

@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { cn } from "@embeddr/react-ui";
 
 interface AuthorizedImageProps extends React.ImgHTMLAttributes<HTMLImageElement> {
@@ -19,12 +19,9 @@ export function AuthorizedImage({
 }: AuthorizedImageProps) {
   // Switch to Proxy strategy for robustness against CORS and Auth issues.
   const isEmbeddrUrl =
-    src.includes("/api/v") &&
-    (src.includes("/artifacts") || src.includes("/content"));
+    src.includes("/api/v") && (src.includes("/artifacts") || src.includes("/content"));
   const shouldUseProxy = (!!apiKey || isEmbeddrUrl) && src.startsWith("http");
-  const proxySrc = shouldUseProxy
-    ? `/embeddr/proxy?url=${encodeURIComponent(src)}`
-    : src;
+  const proxySrc = shouldUseProxy ? `/embeddr/proxy?url=${encodeURIComponent(src)}` : src;
 
   const [error, setError] = useState(false);
 

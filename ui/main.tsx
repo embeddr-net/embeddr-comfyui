@@ -97,8 +97,7 @@ if (typeof embeddrUI.usePluginDrop !== "function") {
         }
 
         const artifactId =
-          dt.getData(fallbackDnDTypes.ARTIFACT_ID) ||
-          dt.getData(fallbackDnDTypes.IMAGE_ID);
+          dt.getData(fallbackDnDTypes.ARTIFACT_ID) || dt.getData(fallbackDnDTypes.IMAGE_ID);
         if (artifactId && onArtifact) {
           onArtifact({
             id: artifactId,
@@ -142,11 +141,7 @@ if (typeof embeddrUI.usePluginDrop !== "function") {
   };
 }
 if (typeof embeddrUI.usePluginStorage !== "function") {
-  embeddrUI.usePluginStorage = <T,>(
-    pluginId: string,
-    key: string,
-    initialValue: T,
-  ) => {
+  embeddrUI.usePluginStorage = <T,>(pluginId: string, key: string, initialValue: T) => {
     const storageKey = pluginId ? `plugin-storage:${pluginId}:${key}` : key;
     const [value, setValue] = React.useState<T>(() => {
       const raw = localStorage.getItem(storageKey);
@@ -279,8 +274,7 @@ document.body.classList.add("embeddr", "embeddr-theme-root", "font-sans");
 const originalFetch = window.fetch.bind(window);
 window.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
   const urlStr = input instanceof Request ? input.url : input.toString();
-  const endpoint =
-    localStorage.getItem("embeddr_endpoint") || "http://localhost:8003";
+  const endpoint = localStorage.getItem("embeddr_endpoint") || "http://localhost:8003";
   const apiKey = localStorage.getItem("embeddr_api_key") || "";
 
   const shouldAttachKey = (() => {
@@ -290,9 +284,7 @@ window.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
         ? new URL(urlStr)
         : new URL(urlStr, window.location.origin);
       const base = new URL(endpoint);
-      return (
-        target.origin === base.origin && target.pathname.startsWith("/api/v1/")
-      );
+      return target.origin === base.origin && target.pathname.startsWith("/api/v1/");
     } catch {
       return false;
     }
@@ -302,9 +294,7 @@ window.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
     return originalFetch(input, init);
   }
 
-  const headers = new Headers(
-    input instanceof Request ? input.headers : undefined,
-  );
+  const headers = new Headers(input instanceof Request ? input.headers : undefined);
   if (init?.headers) {
     new Headers(init.headers).forEach((value, key) => headers.set(key, value));
   }

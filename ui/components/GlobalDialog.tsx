@@ -1,16 +1,11 @@
 import React, { useEffect, useState } from "react";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@embeddr/react-ui/components/ui";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@embeddr/react-ui/components/ui";
 import { useImageDialog } from "@embeddr/react-ui";
+import { useEmbeddrApi } from "../hooks/useEmbeddrApi";
+import { app } from "../../../scripts/app.js";
 import { ExploreTab } from "./tabs/ExploreTab";
 import { CollectionSelector } from "./selectors/CollectionSelector";
-import { useEmbeddrApi } from "../hooks/useEmbeddrApi";
 // @ts-ignore
-import { app } from "../../../scripts/app.js";
 
 type DialogMode = "image" | "collection";
 
@@ -101,9 +96,7 @@ export function GlobalDialog() {
           // Handle Collection Selection
 
           // 1. Try "collection_ids" -> Set ID
-          const idWidget = node.widgets?.find(
-            (w: any) => w.name === "collection_ids",
-          );
+          const idWidget = node.widgets?.find((w: any) => w.name === "collection_ids");
           if (idWidget) {
             idWidget.value = item.id.toString();
             if (idWidget.callback) {
@@ -117,9 +110,7 @@ export function GlobalDialog() {
             node.widgets?.map((w: any) => w.name),
           );
 
-          const colIdWidget = node.widgets?.find(
-            (w: any) => w.name === "collection_id",
-          );
+          const colIdWidget = node.widgets?.find((w: any) => w.name === "collection_id");
 
           let idSet = false;
           if (colIdWidget && item.id) {
@@ -130,10 +121,10 @@ export function GlobalDialog() {
             }
             idSet = true;
           } else {
-            console.warn(
-              "[Embeddr] collection_id widget not found on node or invalid item.id!",
-              { widgetFound: !!colIdWidget, itemId: item.id },
-            );
+            console.warn("[Embeddr] collection_id widget not found on node or invalid item.id!", {
+              widgetFound: !!colIdWidget,
+              itemId: item.id,
+            });
           }
 
           // 3. Update Info Widget (Friendly display)
@@ -148,15 +139,11 @@ export function GlobalDialog() {
           // 4. Update or Clear Name Widget
           // If we successfully set the ID, clear the name widget to avoid confusion
           // and ensure the backend uses the ID.
-          const nameWidget = node.widgets?.find(
-            (w: any) => w.name === "collection_name",
-          );
+          const nameWidget = node.widgets?.find((w: any) => w.name === "collection_name");
           if (nameWidget) {
             if (idSet) {
               // Clear name to prioritize ID match and avoid ambiguity
-              console.log(
-                "[Embeddr] Clearing collection_name widget to prioritize ID",
-              );
+              console.log("[Embeddr] Clearing collection_name widget to prioritize ID");
               nameWidget.value = "";
             } else {
               nameWidget.value = item.label || item.name;
@@ -190,9 +177,7 @@ export function GlobalDialog() {
           }
 
           // Also update image_url if it exists (for preview/compatibility)
-          const urlWidget = node.widgets?.find(
-            (w: any) => w.name === "image_url",
-          );
+          const urlWidget = node.widgets?.find((w: any) => w.name === "image_url");
           if (urlWidget) {
             urlWidget.value = item.image_url;
           }
@@ -208,9 +193,7 @@ export function GlobalDialog() {
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogContent className="max-w-4xl h-[80vh] flex flex-col p-0 gap-0">
         <DialogHeader className="p-4 pb-2">
-          <DialogTitle>
-            {mode === "collection" ? "Select Collection" : "Select Image"}
-          </DialogTitle>
+          <DialogTitle>{mode === "collection" ? "Select Collection" : "Select Image"}</DialogTitle>
         </DialogHeader>
         <div className="flex-1 overflow-hidden p-4 pt-0">
           {mode === "collection" ? (

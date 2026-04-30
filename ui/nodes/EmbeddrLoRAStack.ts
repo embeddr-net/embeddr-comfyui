@@ -33,7 +33,7 @@ app.registerExtension({
           (v) => {
             this.updateWidgets();
           },
-          { values: this.loraOptions }
+          { values: this.loraOptions },
         );
 
         // Add Strength Float
@@ -79,23 +79,16 @@ app.registerExtension({
 
         if (loraWidgets.length > 1) {
           const secondLastWidget = loraWidgets[loraWidgets.length - 2];
-          if (
-            lastWidget.value === "None" &&
-            secondLastWidget.value === "None"
-          ) {
+          if (lastWidget.value === "None" && secondLastWidget.value === "None") {
             // Remove the last pair
             // We need to remove both lora and strength widgets
             const strengthName = `strength_${lastIndex}`;
 
             // Find index of widgets to remove
-            const wIndex = this.widgets.findIndex(
-              (w) => w.name === lastWidget.name
-            );
+            const wIndex = this.widgets.findIndex((w) => w.name === lastWidget.name);
             if (wIndex > -1) this.widgets.splice(wIndex, 1);
 
-            const sIndex = this.widgets.findIndex(
-              (w) => w.name === strengthName
-            );
+            const sIndex = this.widgets.findIndex((w) => w.name === strengthName);
             if (sIndex > -1) this.widgets.splice(sIndex, 1);
 
             // Resize node
