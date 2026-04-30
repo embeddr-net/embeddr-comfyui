@@ -703,7 +703,7 @@ function createEmbeddrApiAdapter(input: EmbeddrApiAdapterInput): EmbeddrAPI {
           });
         },
       },
-    } as any,
+    },
     plugin: {
       fetch: async (path: string, init?: RequestInit) => {
         const url = path.startsWith("http")
@@ -747,9 +747,9 @@ function createEmbeddrApiAdapter(input: EmbeddrApiAdapterInput): EmbeddrAPI {
     },
     events: {
       on: (event, listener) =>
-        globalEventBus.on(event as string, listener as (...args: Array<any>) => void),
+        globalEventBus.on(event as string, listener),
       off: (event, listener) =>
-        globalEventBus.off(event as string, listener as (...args: Array<any>) => void),
+        globalEventBus.off(event as string, listener),
       emit: (event, payload) => globalEventBus.emit(event as string, payload),
     },
     comfy: modelCatalog as any,
@@ -849,8 +849,8 @@ function extendApiForPlugin(api: EmbeddrAPI, pluginId: string): EmbeddrAPI {
         }
         return res.json();
       },
-    } as any,
-  } as EmbeddrAPI;
+    },
+  };
 }
 
 export function ZenShell() {

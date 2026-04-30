@@ -3,15 +3,19 @@
     "target": "ES2022",
     "useDefineForClassFields": true,
     "jsx": "react-jsx",
-
     "module": "ESNext",
+    "moduleResolution": "bundler",
     "resolveJsonModule": true,
+    "skipLibCheck": true,
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
+    "isolatedModules": true,
     "paths": {
       "@components/*": ["./ui/components/*"],
       "@hooks/*": ["./ui/hooks/*"],
       "@types": ["./ui/types.ts"]
-    },
-    "typeRoots": ["src/types", "node_modules/@types"]
+    }
   },
-  "exclude": ["node_modules", "dist", "js", "**/*.test.ts", "**/*.test.tsx"]
+  "include": ["ui"],
+  "exclude": ["node_modules", "js", "**/*.test.ts", "**/*.test.tsx"]
 }

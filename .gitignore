@@ -1,7 +1,20 @@
-__pycache__
 node_modules
 js
-config.json
-node.zip
-*_cache
+.DS_Store
+
+# Python
+__pycache__
+*.py[cod]
 .venv
+.ruff_cache
+.pytest_cache
+
+# Local user state
+config.json
+.env
+*.local
+
+# Release artifacts
+comfyui-embeddr/
+comfyui-embeddr.zip
+*.zip
