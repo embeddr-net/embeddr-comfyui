@@ -1,11 +1,13 @@
+import io as pyio
+
+import numpy as np
 import requests
 import torch
-import numpy as np
+from comfy_api.latest import io
 from PIL import Image, ImageOps
-import io as pyio
-from comfy_api.latest import io, ui
+
 from .utils import get_config
-from .utils.api import get_libraries, get_collections
+from .utils.api import get_collections, get_libraries
 from .utils.config import get_auth_headers
 
 
@@ -13,8 +15,8 @@ class EmbeddrFindSimilarTextNode(io.ComfyNode):
     @classmethod
     def define_schema(cls) -> io.Schema:
         # Fetch dynamic options
-        libraries = ["All"] + get_libraries()
-        collections = ["All"] + get_collections()
+        libraries = ["All", *get_libraries()]
+        collections = ["All", *get_collections()]
 
         return io.Schema(
             node_id="embeddr.FindSimilarText",
@@ -24,8 +26,7 @@ class EmbeddrFindSimilarTextNode(io.ComfyNode):
             inputs=[
                 io.String.Input("prompt", multiline=True),
                 io.Combo.Input("library", options=libraries, default="All"),
-                io.Combo.Input(
-                    "collection", options=collections, default="All"),
+                io.Combo.Input("collection", options=collections, default="All"),
                 io.Int.Input("limit", default=5, min=1, max=50),
             ],
             outputs=[
@@ -50,40 +51,34 @@ class EmbeddrFindSimilarTextNode(io.ComfyNode):
             try:
                 lib_id = int(library.split(":")[0])
                 params["library_id"] = lib_id
-            except:
+            except Exception:
                 pass
 
         if collection != "All":
             try:
                 col_id = int(collection.split(":")[0])
                 params["collection_id"] = col_id
-            except:
+            except Exception:
                 pass
 
         try:
-            response = requests.get(
-                api_url, params=params, headers=get_auth_headers())
+            response = requests.get(api_url, params=params, headers=get_auth_headers())
             response.raise_for_status()
             results = response.json()
             items = results.get("items", [])
 
             if not items:
                 # Return empty
-                empty = torch.zeros(
-                    (1, 64, 64, 3), dtype=torch.float32, device="cpu")
+                empty = torch.zeros((1, 64, 64, 3), dtype=torch.float32, device="cpu")
                 return io.NodeOutput(empty, "")
 
             # Load images
             output_images = []
             output_ids = []
 
-            first_width = 0
-            first_height = 0
-
             for item in items:
                 # Fetch image file
-                img_url = endpoint.rstrip(
-                    "/") + f"/api/v1/images/{item['id']}/file"
+                img_url = endpoint.rstrip("/") + f"/api/v1/images/{item['id']}/file"
                 img_resp = requests.get(img_url, headers=get_auth_headers())
                 if img_resp.status_code == 200:
                     i = Image.open(pyio.BytesIO(img_resp.content))
@@ -93,7 +88,7 @@ class EmbeddrFindSimilarTextNode(io.ComfyNode):
                     i = np.array(i).astype(np.float32) / 255.0
                     # Add batch dimension (1, H, W, C)
                     output_images.append(torch.from_numpy(i).unsqueeze(0))
-                    output_ids.append(str(item['id']))
+                    output_ids.append(str(item["id"]))
 
             if not output_images:
                 return io.NodeOutput([], [])
@@ -102,6 +97,5 @@ class EmbeddrFindSimilarTextNode(io.ComfyNode):
 
         except Exception as e:
             print(f"[Embeddr] Find Similar Text error: {e}")
-            empty = torch.zeros(
-                (1, 64, 64, 3), dtype=torch.float32, device="cpu")
+            empty = torch.zeros((1, 64, 64, 3), dtype=torch.float32, device="cpu")
             return io.NodeOutput(empty, "")

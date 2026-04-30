@@ -1,5 +1,6 @@
 from comfy_api.latest import io
-from .types import EmbeddrArtifactInfo, EmbeddrArtifactID, EmbeddrArtifactIDObject
+
+from .types import EmbeddrArtifactID, EmbeddrArtifactIDObject, EmbeddrArtifactInfo
 
 
 class EmbeddrExtractArtifactInfoNode(io.ComfyNode):
@@ -12,15 +13,14 @@ class EmbeddrExtractArtifactInfoNode(io.ComfyNode):
             category="Embeddr",
             inputs=[
                 EmbeddrArtifactInfo.Input(
-                    "artifact_info", tooltip="Artifact Info object from Load Artifact"),
+                    "artifact_info", tooltip="Artifact Info object from Load Artifact"
+                ),
             ],
             outputs=[
-                EmbeddrArtifactID.Output(
-                    "parent_ids", tooltip="List of parent Artifact IDs"),
+                EmbeddrArtifactID.Output("parent_ids", tooltip="List of parent Artifact IDs"),
                 # EmbeddrArtifactID.Output("collection_ids", tooltip="List of collection IDs"),
                 io.String.Output("tags", tooltip="Comma-separated tags"),
-                io.String.Output(
-                    "all_json", tooltip="Full JSON dump of the artifact metadata"),
+                io.String.Output("all_json", tooltip="Full JSON dump of the artifact metadata"),
             ],
         )
 
@@ -85,10 +85,7 @@ class EmbeddrExtractArtifactInfoNode(io.ComfyNode):
         tags_str = ",".join(tags)
 
         import json
+
         json_str = json.dumps(data, indent=2)
 
-        return io.NodeOutput(
-            EmbeddrArtifactIDObject(artifact_id=parent_str),
-            tags_str,
-            json_str
-        )
+        return io.NodeOutput(EmbeddrArtifactIDObject(artifact_id=parent_str), tags_str, json_str)

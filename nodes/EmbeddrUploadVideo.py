@@ -1,16 +1,17 @@
-import os
 import json
-import requests
+import os
 import tempfile
+
+import requests
 from comfy_api.latest import io
-from .utils.ids import normalize_ids
-from .utils.config import get_embeddr_base_url, get_upload_mode, get_auth_headers
+
 from .EmbeddrUploadOptions import EmbeddrUploadArtifactOptions, EmbeddrUploadArtifactOptionsObject
 from .types import EmbeddrArtifactID, EmbeddrArtifactIDObject
+from .utils.config import get_auth_headers, get_embeddr_base_url, get_upload_mode
+from .utils.ids import normalize_ids
 
 
 class EmbeddrUploadVideo(io.ComfyNode):
-
     @classmethod
     def define_schema(cls) -> io.Schema:
         formats = ["mp4", "mkv", "webm", "mov", "avi"]
@@ -24,10 +25,15 @@ class EmbeddrUploadVideo(io.ComfyNode):
             inputs=[
                 io.Video.Input("video", tooltip="The video to save."),
                 io.String.Input("caption", optional=True),
-                EmbeddrArtifactID.Input("parent_ids", optional=True,
-                                        tooltip="Parent artifact UUIDs"),
-                EmbeddrUploadArtifactOptions.Input("options", tooltip="Upload Artifact Options",
-                                                   optional=True, display_name="Options"),
+                EmbeddrArtifactID.Input(
+                    "parent_ids", optional=True, tooltip="Parent artifact UUIDs"
+                ),
+                EmbeddrUploadArtifactOptions.Input(
+                    "options",
+                    tooltip="Upload Artifact Options",
+                    optional=True,
+                    display_name="Options",
+                ),
                 io.Combo.Input("format", options=formats, default="mp4"),
                 io.Combo.Input("codec", options=codecs, default="h264"),
             ],
@@ -59,8 +65,7 @@ class EmbeddrUploadVideo(io.ComfyNode):
         normalized_parent_ids = normalize_ids(parent_ids)
 
         if upload_mode in {"skip", "disabled", "off", "none"}:
-            print(
-                "[Embeddr] Upload disabled (EMBEDDR_UPLOAD_MODE). Skipping Embeddr upload.")
+            print("[Embeddr] Upload disabled (EMBEDDR_UPLOAD_MODE). Skipping Embeddr upload.")
             return io.NodeOutput(EmbeddrArtifactIDObject(artifact_id=""))
 
         if upload_mode in {"best_effort", "auto"}:
@@ -68,8 +73,7 @@ class EmbeddrUploadVideo(io.ComfyNode):
                 health_url = f"{base_url}/api/v1/system/routes"
                 requests.get(health_url, timeout=2)
             except Exception as e:
-                print(
-                    f"[Embeddr] Embeddr backend unavailable ({e}); skipping upload.")
+                print(f"[Embeddr] Embeddr backend unavailable ({e}); skipping upload.")
                 return io.NodeOutput(EmbeddrArtifactIDObject(artifact_id=""))
 
         try:
@@ -90,8 +94,7 @@ class EmbeddrUploadVideo(io.ComfyNode):
                     storage_provider = options.get("storage_provider")
                     storage_path = options.get("storage_path")
                 else:
-                    storage_provider = getattr(
-                        options, "storage_provider", None)
+                    storage_provider = getattr(options, "storage_provider", None)
                     storage_path = getattr(options, "storage_path", None)
 
             storage_provider = (
@@ -100,9 +103,7 @@ class EmbeddrUploadVideo(io.ComfyNode):
                 else None
             )
             storage_path = (
-                str(storage_path).strip()
-                if storage_path not in (None, "", "__default__")
-                else None
+                str(storage_path).strip() if storage_path not in (None, "", "__default__") else None
             )
 
             meta = {
@@ -140,7 +141,7 @@ class EmbeddrUploadVideo(io.ComfyNode):
             print(f"[Embeddr] Video upload failed: {e}")
             uploaded_ids.append("-1")
         finally:
-            if 'temp_path' in locals() and os.path.exists(temp_path):
+            if "temp_path" in locals() and os.path.exists(temp_path):
                 os.remove(temp_path)
 
         result_str = ",".join(uploaded_ids)

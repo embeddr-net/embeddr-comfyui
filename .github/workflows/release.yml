@@ -36,6 +36,15 @@ jobs:
       - name: Lint
         run: pnpm lint || true # soft-fail; tanstack-config strictness
 
+      - name: Install uv (for Python ruff check)
+        uses: astral-sh/setup-uv@v4
+
+      - name: Ruff check (Python)
+        run: |
+          uv sync --group dev
+          uv run ruff check .
+          uv run ruff format --check .
+
       - name: Build frontend
         run: pnpm build
 

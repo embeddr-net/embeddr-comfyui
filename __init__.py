@@ -1,34 +1,37 @@
-import os
 import json
-import aiohttp
 import mimetypes
+import os
 import re
 import tempfile
-from aiohttp import web
 from pathlib import Path
-from server import PromptServer
+
+import aiohttp
+from aiohttp import web
 from comfy_api.latest import ComfyExtension, io
+from server import PromptServer
 
 try:
     import folder_paths
 except Exception:
     folder_paths = None
 
-from .nodes.EmbeddrUploadArtifact import EmbeddrUploadArtifactNode
+import contextlib
+
+from .nodes.EmbeddrAction import EmbeddrActionNode
+from .nodes.EmbeddrExtractArtifactInfo import EmbeddrExtractArtifactInfoNode
+from .nodes.EmbeddrFindCollection import EmbeddrFindCollectionNode
+from .nodes.EmbeddrFindSimilarArtifacts import EmbeddrFindSimilarArtifactsNode
+from .nodes.EmbeddrFindSimilarText import EmbeddrFindSimilarTextNode
+from .nodes.EmbeddrFindSimilarToArtifact import EmbeddrFindSimilarToArtifactNode
 from .nodes.EmbeddrLoadArtifact import EmbeddrLoadArtifactNode
 from .nodes.EmbeddrLoadArtifacts import EmbeddrLoadArtifactsNode
-from .nodes.EmbeddrMergeIDs import EmbeddrMergeIDsNode
-from .nodes.EmbeddrExtractArtifactInfo import EmbeddrExtractArtifactInfoNode
-from .nodes.EmbeddrSplitIDs import EmbeddrSplitIDsNode
-from .nodes.EmbeddrFindSimilarArtifacts import EmbeddrFindSimilarArtifactsNode
-from .nodes.EmbeddrFindSimilarToArtifact import EmbeddrFindSimilarToArtifactNode
-from .nodes.EmbeddrFindSimilarText import EmbeddrFindSimilarTextNode
-from .nodes.EmbeddrUploadVideo import EmbeddrUploadVideo
 from .nodes.EmbeddrLoadVideo import EmbeddrLoadVideoNode
 from .nodes.EmbeddrLoRAStack import EmbeddrLoRAStack
-from .nodes.EmbeddrFindCollection import EmbeddrFindCollectionNode
+from .nodes.EmbeddrMergeIDs import EmbeddrMergeIDsNode
+from .nodes.EmbeddrSplitIDs import EmbeddrSplitIDsNode
+from .nodes.EmbeddrUploadArtifact import EmbeddrUploadArtifactNode
 from .nodes.EmbeddrUploadOptions import UploadArtifactOptionsNode
-from .nodes.EmbeddrAction import EmbeddrActionNode
+from .nodes.EmbeddrUploadVideo import EmbeddrUploadVideo
 
 CONFIG_PATH = os.path.join(os.path.dirname(__file__), "config.json")
 
@@ -38,7 +41,7 @@ print("[Embeddr Extension] Loading... Proxy routes registered.")
 def get_api_key():
     if os.path.exists(CONFIG_PATH):
         try:
-            with open(CONFIG_PATH, "r") as f:
+            with open(CONFIG_PATH) as f:
                 config = json.load(f)
                 return config.get("api_key", "")
         except Exception:
@@ -49,7 +52,7 @@ def get_api_key():
 def _load_config() -> dict:
     if os.path.exists(CONFIG_PATH):
         try:
-            with open(CONFIG_PATH, "r") as f:
+            with open(CONFIG_PATH) as f:
                 return json.load(f)
         except Exception:
             return {}
@@ -137,7 +140,9 @@ def _guess_install_filename(
         file_name_override,
         comfy_meta.get("suggested_filename"),
         metadata.get("filename"),
-        Path(str(civitai_meta.get("local_path") or "")).name if civitai_meta.get("local_path") else None,
+        Path(str(civitai_meta.get("local_path") or "")).name
+        if civitai_meta.get("local_path")
+        else None,
         metadata.get("name"),
     ]
 
@@ -158,7 +163,9 @@ def _guess_install_filename(
     }
     suffix = ext_map.get(format_hint)
     if not suffix:
-        guessed = mimetypes.guess_extension(str(artifact_payload.get("content_type") or "").split(";", 1)[0].strip())
+        guessed = mimetypes.guess_extension(
+            str(artifact_payload.get("content_type") or "").split(";", 1)[0].strip()
+        )
         suffix = guessed or ".bin"
     return f"{file_name}{suffix}"
 
@@ -228,9 +235,9 @@ async def proxy_request(request):
     config = {}
     if os.path.exists(CONFIG_PATH):
         try:
-            with open(CONFIG_PATH, "r") as f:
+            with open(CONFIG_PATH) as f:
                 config = json.load(f)
-        except:
+        except Exception:
             pass
 
     api_key = config.get("api_key", "")
@@ -252,17 +259,16 @@ async def proxy_request(request):
         try:
             async with session.request(method, url, headers=headers, data=data) as resp:
                 # Create response with status code from upstream
-                response = web.StreamResponse(
-                    status=resp.status, reason=resp.reason)
+                response = web.StreamResponse(status=resp.status, reason=resp.reason)
 
                 # Forward relevant headers
-                for h in ['Content-Type', 'Content-Length', 'Content-Disposition']:
+                for h in ["Content-Type", "Content-Length", "Content-Disposition"]:
                     if h in resp.headers:
                         response.headers[h] = resp.headers[h]
 
                 await response.prepare(request)
 
-                async for chunk in resp.content.iter_chunked(1024*64):
+                async for chunk in resp.content.iter_chunked(1024 * 64):
                     await response.write(chunk)
 
                 return response
@@ -284,9 +290,9 @@ async def save_config(request):
         config = {}
         if os.path.exists(CONFIG_PATH):
             try:
-                with open(CONFIG_PATH, "r") as f:
+                with open(CONFIG_PATH) as f:
                     config = json.load(f)
-            except:
+            except Exception:
                 pass
 
         if api_key is not None:
@@ -318,13 +324,15 @@ async def get_config(request):
     auth_salt = config.get("auth_salt", os.environ.get("EMBEDDR_AUTH_SALT", ""))
 
     # Return key for UI so frontend can make authorized requests
-    return web.json_response({
-        "endpoint": endpoint,
-        "mode": mode,
-        "grid_preview_contain": grid_preview_contain,
-        "api_key": api_key,
-        "auth_salt": auth_salt,
-    })
+    return web.json_response(
+        {
+            "endpoint": endpoint,
+            "mode": mode,
+            "grid_preview_contain": grid_preview_contain,
+            "api_key": api_key,
+            "auth_salt": auth_salt,
+        }
+    )
 
 
 @PromptServer.instance.routes.get("/embeddr/health")
@@ -507,10 +515,8 @@ async def install_artifact(request):
             os.replace(tmp_path, target_path)
         finally:
             if tmp_path.exists():
-                try:
+                with contextlib.suppress(Exception):
                     tmp_path.unlink()
-                except Exception:
-                    pass
 
     sidecar_payload = _build_sidecar_metadata(artifact_payload, target_path)
     try:
@@ -569,4 +575,4 @@ async def comfy_entrypoint() -> ComfyExtension:
 
 
 WEB_DIRECTORY = "./js"
-__all__ = ["EmbeddrComfyUIExtension", "comfy_entrypoint", "WEB_DIRECTORY"]
+__all__ = ["WEB_DIRECTORY", "EmbeddrComfyUIExtension", "comfy_entrypoint"]

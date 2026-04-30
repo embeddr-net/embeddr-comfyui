@@ -4,7 +4,14 @@ import { tanstackConfig } from "@tanstack/eslint-config";
 export default [
   ...tanstackConfig,
   {
-    ignores: ["js/**", "build/**", ".vite/**", "coverage/**", "*.config.{js,ts,mjs,cjs,mts}"],
+    ignores: [
+      "js/**",
+      "build/**",
+      ".vite/**",
+      ".venv/**",
+      "coverage/**",
+      "*.config.{js,ts,mjs,cjs,mts}",
+    ],
   },
   {
     files: ["ui/**/*.{ts,tsx}", "nodes/**/*.{ts,tsx}"],

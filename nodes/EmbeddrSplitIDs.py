@@ -1,4 +1,5 @@
 from comfy_api.latest import io
+
 from .types import EmbeddrArtifactID, EmbeddrArtifactIDObject
 from .utils.ids import normalize_ids
 
@@ -13,11 +14,13 @@ class EmbeddrSplitIDsNode(io.ComfyNode):
             category="Embeddr",
             inputs=[
                 EmbeddrArtifactID.Input(
-                    "artifact_ids", tooltip="Comma-separated IDs or list of IDs"),
+                    "artifact_ids", tooltip="Comma-separated IDs or list of IDs"
+                ),
             ],
             outputs=[
                 EmbeddrArtifactID.Output(
-                    "split_ids", tooltip="Individual IDs (List Execution)", is_output_list=True),
+                    "split_ids", tooltip="Individual IDs (List Execution)", is_output_list=True
+                ),
             ],
         )
 
@@ -27,7 +30,6 @@ class EmbeddrSplitIDsNode(io.ComfyNode):
         final_ids = normalize_ids(artifact_ids)
 
         # Return a LIST of objects. ComfyUI will iterate this list for downstream nodes if they support it.
-        results = [EmbeddrArtifactIDObject(
-            artifact_id=fid) for fid in final_ids]
+        results = [EmbeddrArtifactIDObject(artifact_id=fid) for fid in final_ids]
 
         return io.NodeOutput(results)

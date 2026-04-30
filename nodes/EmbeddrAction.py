@@ -1,5 +1,5 @@
 """
-EmbeddrAction – Dynamic Lotus Action node for ComfyUI.
+EmbeddrAction - Dynamic Lotus Action node for ComfyUI.
 
 Introspects Lotus capabilities (kind=action) at execution time and
 dispatches the selected action via the Embeddr REST API.
@@ -7,11 +7,15 @@ dispatches the selected action via the Embeddr REST API.
 The frontend extension (ui/nodes/EmbeddrAction.ts) handles the
 dynamic input/widget creation based on the selected action's schema.
 """
+
+import contextlib
 import json
+
 import requests
 from comfy_api.latest import io
+
 from .types import EmbeddrArtifactID, EmbeddrArtifactIDObject
-from .utils.config import get_embeddr_base_url, get_auth_headers
+from .utils.config import get_auth_headers, get_embeddr_base_url
 
 
 def _log(msg: str):
@@ -57,6 +61,7 @@ _CAP_CACHE_TTL = 30.0
 def _get_cap_schema(cap_id: str) -> dict | None:
     """Get the capability dict for a given cap_id, using a short-lived cache."""
     import time
+
     global _cap_cache, _cap_cache_ts
 
     now = time.time()
@@ -273,7 +278,7 @@ class EmbeddrActionNode(io.ComfyNode):
             if not isinstance(key, str) or not key.startswith(_DYN_PREFIX):
                 continue
 
-            payload_key = key[len(_DYN_PREFIX):]
+            payload_key = key[len(_DYN_PREFIX) :]
             if not payload_key:
                 continue
 
@@ -287,10 +292,8 @@ class EmbeddrActionNode(io.ComfyNode):
             if isinstance(runtime_val, str):
                 trimmed = runtime_val.strip()
                 if trimmed.startswith("{") or trimmed.startswith("["):
-                    try:
+                    with contextlib.suppress(Exception):
                         runtime_val = json.loads(trimmed)
-                    except Exception:
-                        pass
 
             if runtime_val is None:
                 continue
@@ -307,13 +310,19 @@ class EmbeddrActionNode(io.ComfyNode):
         # Extract connected artifact IDs
         raw_aid = None
         if artifact_id:
-            raw_aid = artifact_id.artifact_id if isinstance(
-                artifact_id, EmbeddrArtifactIDObject) else artifact_id
+            raw_aid = (
+                artifact_id.artifact_id
+                if isinstance(artifact_id, EmbeddrArtifactIDObject)
+                else artifact_id
+            )
 
         raw_aids = None
         if artifact_ids:
-            raw_aids = artifact_ids.artifact_id if isinstance(
-                artifact_ids, EmbeddrArtifactIDObject) else artifact_ids
+            raw_aids = (
+                artifact_ids.artifact_id
+                if isinstance(artifact_ids, EmbeddrArtifactIDObject)
+                else artifact_ids
+            )
             if raw_aids and not isinstance(raw_aids, list):
                 raw_aids = [raw_aids]
 
@@ -321,19 +330,22 @@ class EmbeddrActionNode(io.ComfyNode):
             # Deduplicate
             seen: set[str] = set()
             unique_ids: list[str] = []
-            for aid in ([raw_aid] if isinstance(raw_aid, str) and raw_aid else (raw_aid if isinstance(raw_aid, list) else [])):
+            for aid in (
+                [raw_aid]
+                if isinstance(raw_aid, str) and raw_aid
+                else (raw_aid if isinstance(raw_aid, list) else [])
+            ):
                 if aid and aid not in seen:
                     seen.add(aid)
                     unique_ids.append(aid)
-            for aid in (raw_aids or []):
+            for aid in raw_aids or []:
                 if aid and aid not in seen:
                     seen.add(aid)
                     unique_ids.append(aid)
 
             if unique_ids:
                 if has_resource_field and "resource" not in payload:
-                    payload["resource"] = unique_ids[0] if len(
-                        unique_ids) == 1 else unique_ids
+                    payload["resource"] = unique_ids[0] if len(unique_ids) == 1 else unique_ids
                 else:
                     if "artifact_id" not in payload:
                         payload["artifact_id"] = unique_ids[0]
@@ -344,8 +356,7 @@ class EmbeddrActionNode(io.ComfyNode):
         base_url = get_embeddr_base_url()
         url = f"{base_url}/api/v1/lotus/{cap_id}"
 
-        _log(
-            f"Invoking action '{cap_id}' with payload: {json.dumps(payload, default=str)[:500]}")
+        _log(f"Invoking action '{cap_id}' with payload: {json.dumps(payload, default=str)[:500]}")
 
         try:
             resp = requests.post(
@@ -364,16 +375,18 @@ class EmbeddrActionNode(io.ComfyNode):
                 error_text = resp.text[:500]
                 _log(f"Action error: {error_text}")
                 return io.NodeOutput(
-                    json.dumps(
-                        {"error": error_text, "status_code": resp.status_code}),
+                    json.dumps({"error": error_text, "status_code": resp.status_code}),
                     "error",
                     "",
                     "",
                     error_text,
                 )
 
-            result = resp.json() if resp.headers.get(
-                "content-type", "").startswith("application/json") else {"raw": resp.text}
+            result = (
+                resp.json()
+                if resp.headers.get("content-type", "").startswith("application/json")
+                else {"raw": resp.text}
+            )
 
             # ── Extract typed outputs from result ──
             output_ids = ""
@@ -382,10 +395,10 @@ class EmbeddrActionNode(io.ComfyNode):
             status_str = "ok"
 
             if isinstance(result, dict):
-                outputs_obj = result.get("outputs") if isinstance(
-                    result.get("outputs"), dict) else {}
-                output_schema_props = _get_output_schema_props(
-                    cap) if cap else {}
+                outputs_obj = (
+                    result.get("outputs") if isinstance(result.get("outputs"), dict) else {}
+                )
+                output_schema_props = _get_output_schema_props(cap) if cap else {}
 
                 # Status
                 if "status" in result:
@@ -395,8 +408,13 @@ class EmbeddrActionNode(io.ComfyNode):
 
                 # Artifact IDs
                 artifact_keys = [
-                    key for key in (
-                        "artifact_id", "id", "artifact_ids", "ids", "output_artifact_id",
+                    key
+                    for key in (
+                        "artifact_id",
+                        "id",
+                        "artifact_ids",
+                        "ids",
+                        "output_artifact_id",
                     )
                     if (not output_schema_props) or key in output_schema_props
                 ] or ["artifact_id", "id", "artifact_ids", "ids", "output_artifact_id"]
@@ -404,17 +422,28 @@ class EmbeddrActionNode(io.ComfyNode):
                 if artifact_val is None:
                     artifact_val = _pick_first_value(result, artifact_keys)
                 if artifact_val:
-                    output_ids = artifact_val if isinstance(
-                        artifact_val, str) else json.dumps(artifact_val)
+                    output_ids = (
+                        artifact_val if isinstance(artifact_val, str) else json.dumps(artifact_val)
+                    )
 
                 # Primary text content (captions, messages, values, etc.)
                 _TEXT_KEYS = (
-                    "response_text", "caption_text", "caption", "value", "text",
-                    "message", "content", "description", "summary",
-                    "output", "answer", "response",
+                    "response_text",
+                    "caption_text",
+                    "caption",
+                    "value",
+                    "text",
+                    "message",
+                    "content",
+                    "description",
+                    "summary",
+                    "output",
+                    "answer",
+                    "response",
                 )
                 text_keys = [
-                    key for key in _TEXT_KEYS
+                    key
+                    for key in _TEXT_KEYS
                     if (not output_schema_props) or key in output_schema_props
                 ] or list(_TEXT_KEYS)
                 text_val = _pick_first_value(outputs_obj, text_keys)
@@ -443,8 +472,7 @@ class EmbeddrActionNode(io.ComfyNode):
                     if better_val is not None:
                         text_val = better_val
                 if text_val is not None:
-                    text_output = str(text_val) if not isinstance(
-                        text_val, str) else text_val
+                    text_output = str(text_val) if not isinstance(text_val, str) else text_val
 
                 # Error
                 if result.get("error"):

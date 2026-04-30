@@ -1,14 +1,14 @@
-import requests
-import numpy as np
-from PIL import Image
 import io as pyio
 import json
-from .utils.ids import normalize_ids
-from .utils.config import get_embeddr_base_url, get_upload_mode, get_auth_headers
+
+import numpy as np
+import requests
 from comfy_api.latest import io, ui
+from PIL import Image
+
 from .EmbeddrUploadOptions import EmbeddrUploadArtifactOptions, EmbeddrUploadArtifactOptionsObject
 from .types import EmbeddrArtifactID, EmbeddrArtifactIDObject
-
+from .utils.config import get_auth_headers, get_embeddr_base_url, get_upload_mode
 from .utils.ids import normalize_ids
 
 
@@ -34,20 +34,35 @@ class EmbeddrUploadArtifactNode(io.ComfyNode):
             is_output_node=True,
             inputs=[
                 io.Image.Input("image"),
-                EmbeddrArtifactID.Input("parent_ids", optional=True,
-                                        tooltip="Parent artifact UUIDs"),
-                io.String.Input("auth_ticket", default="",
-                                tooltip="Ephemeral auth ticket for per-user ownership", optional=True),
-                EmbeddrUploadArtifactOptions.Input("options", tooltip="Upload Artifact Options",
-                                                   optional=True, display_name="Options"),
+                EmbeddrArtifactID.Input(
+                    "parent_ids", optional=True, tooltip="Parent artifact UUIDs"
+                ),
+                io.String.Input(
+                    "auth_ticket",
+                    default="",
+                    tooltip="Ephemeral auth ticket for per-user ownership",
+                    optional=True,
+                ),
+                EmbeddrUploadArtifactOptions.Input(
+                    "options",
+                    tooltip="Upload Artifact Options",
+                    optional=True,
+                    display_name="Options",
+                ),
             ],
             outputs=[
                 EmbeddrArtifactID.Output("artifact_ids"),
-            ]
+            ],
         )
 
     @classmethod
-    def execute(cls, image, parent_ids: EmbeddrArtifactIDObject = None, auth_ticket: str = "", options: EmbeddrUploadArtifactOptionsObject = None) -> io.NodeOutput:
+    def execute(
+        cls,
+        image,
+        parent_ids: EmbeddrArtifactIDObject = None,
+        auth_ticket: str = "",
+        options: EmbeddrUploadArtifactOptionsObject = None,
+    ) -> io.NodeOutput:
         base_url = get_embeddr_base_url()
         upload_mode = get_upload_mode()
         endpoint = f"{base_url}/api/v1/plugins/embeddr-comfyui/upload"
@@ -58,9 +73,7 @@ class EmbeddrUploadArtifactNode(io.ComfyNode):
         results = []
 
         if upload_mode in {"skip", "disabled", "off", "none"}:
-            Embeddr_Log(
-                "Upload disabled (EMBEDDR_UPLOAD_MODE). Skipping Embeddr upload."
-            )
+            Embeddr_Log("Upload disabled (EMBEDDR_UPLOAD_MODE). Skipping Embeddr upload.")
             return io.NodeOutput(EmbeddrArtifactIDObject(artifact_id=""), ui=ui.PreviewImage(image))
 
         if upload_mode in {"best_effort", "auto"}:
@@ -68,30 +81,30 @@ class EmbeddrUploadArtifactNode(io.ComfyNode):
                 health_url = f"{base_url}/api/v1/system/routes"
                 requests.get(health_url, timeout=2)
             except Exception as e:
-                Embeddr_Log(
-                    f"Embeddr backend unavailable ({e}); skipping upload."
+                Embeddr_Log(f"Embeddr backend unavailable ({e}); skipping upload.")
+                return io.NodeOutput(
+                    EmbeddrArtifactIDObject(artifact_id=""), ui=ui.PreviewImage(image)
                 )
-                return io.NodeOutput(EmbeddrArtifactIDObject(artifact_id=""), ui=ui.PreviewImage(image))
 
         # 'image' input is a batch tensor [B, H, W, C]
         for batch_idx, img_tensor in enumerate(image):
             try:
                 # Convert tensor to PIL
-                i = 255. * img_tensor.cpu().numpy()
+                i = 255.0 * img_tensor.cpu().numpy()
                 img = Image.fromarray(np.clip(i, 0, 255).astype(np.uint8))
 
                 # Save to buffer
                 img_byte_arr = pyio.BytesIO()
-                img.save(img_byte_arr, format='PNG')
+                img.save(img_byte_arr, format="PNG")
                 img_byte_arr.seek(0)
                 Embeddr_Log(f"""
                             Uploading artifact batch {batch_idx}...
-                            Storage Provider: {options.storage_provider if options else 'default'}
-                            Storage Path: {options.storage_path if options else 'default'}
-                            Tags: {options.tags if options else 'none'}
-                            Related Artifacts: {options.related_artifact_ids if options else 'none'}
+                            Storage Provider: {options.storage_provider if options else "default"}
+                            Storage Path: {options.storage_path if options else "default"}
+                            Tags: {options.tags if options else "none"}
+                            Related Artifacts: {options.related_artifact_ids if options else "none"}
                             Parent IDs: {normalized_parent_ids}
-                            Auth Ticket: {'present' if _has_auth_ticket(auth_ticket) else 'absent'}
+                            Auth Ticket: {"present" if _has_auth_ticket(auth_ticket) else "absent"}
                             """)
 
                 storage_provider = None
@@ -101,8 +114,7 @@ class EmbeddrUploadArtifactNode(io.ComfyNode):
                         storage_provider = options.get("storage_provider")
                         storage_path = options.get("storage_path")
                     else:
-                        storage_provider = getattr(
-                            options, "storage_provider", None)
+                        storage_provider = getattr(options, "storage_provider", None)
                         storage_path = getattr(options, "storage_path", None)
 
                 storage_provider = (
@@ -119,12 +131,16 @@ class EmbeddrUploadArtifactNode(io.ComfyNode):
                 # Prepare Metadata
                 meta = {
                     "parent_ids": normalized_parent_ids,
-                    "collection_ids": normalize_ids(options.related_artifact_ids) if options else [],
+                    "collection_ids": normalize_ids(options.related_artifact_ids)
+                    if options
+                    else [],
                     "tags": normalize_ids(options.tags) if options else [],
                     "trigger_automation": options.trigger_ingest if options else True,
-                    "compute_embedding": options.trigger_ingest if options else True,  # Legacy Compat
+                    "compute_embedding": options.trigger_ingest
+                    if options
+                    else True,  # Legacy Compat
                     "batch_index": batch_idx,
-                    "confirm": True
+                    "confirm": True,
                 }
 
                 if storage_provider:
@@ -139,16 +155,15 @@ class EmbeddrUploadArtifactNode(io.ComfyNode):
                     )
 
                 # Prepare multipart upload
-                files = {'file': (f'image_{batch_idx}.png',
-                                  img_byte_arr, 'image/png')}
-                data = {'metadata': json.dumps(meta)}
+                files = {"file": (f"image_{batch_idx}.png", img_byte_arr, "image/png")}
+                data = {"metadata": json.dumps(meta)}
 
                 # Post to Embeddr Core Plugin
                 response = requests.post(
                     endpoint,
                     files=files,
                     data=data,
-                    headers=get_auth_headers(auth_ticket=auth_ticket)
+                    headers=get_auth_headers(auth_ticket=auth_ticket),
                 )
                 response.raise_for_status()
                 res_json = response.json()
@@ -164,8 +179,7 @@ class EmbeddrUploadArtifactNode(io.ComfyNode):
                 except Exception:
                     body = ""
                 suffix = f" body={body}" if body else ""
-                Embeddr_Log(
-                    f"Upload failed for batch {batch_idx}: {e}{suffix}")
+                Embeddr_Log(f"Upload failed for batch {batch_idx}: {e}{suffix}")
             except Exception as e:
                 Embeddr_Log(f"Upload failed for batch {batch_idx}: {e}")
                 # We don't crash the whole node, but result might be partial

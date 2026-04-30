@@ -12,10 +12,8 @@ class EmbeddrLoRAStack(io.ComfyNode):
         ]
 
         # Add 1 slot initially, frontend will handle the rest
-        inputs.append(io.Combo.Input(
-            "lora_1", default="None", options=["None"] + loras))
-        inputs.append(io.Float.Input(
-            "strength_1", default=1.0, min=-10.0, max=10.0, step=0.01))
+        inputs.append(io.Combo.Input("lora_1", default="None", options=["None", *loras]))
+        inputs.append(io.Float.Input("strength_1", default=1.0, min=-10.0, max=10.0, step=0.01))
 
         return io.Schema(
             node_id="embeddr.LoRAStack",
@@ -39,7 +37,7 @@ class EmbeddrLoRAStack(io.ComfyNode):
         # We expect keys like lora_1, strength_1, lora_2, strength_2, etc.
 
         # Find all lora keys
-        lora_keys = [k for k in kwargs.keys() if k.startswith("lora_")]
+        lora_keys = [k for k in kwargs if k.startswith("lora_")]
         # Sort them by index
         lora_keys.sort(key=lambda x: int(x.split("_")[1]))
 
@@ -51,9 +49,9 @@ class EmbeddrLoRAStack(io.ComfyNode):
             if lora_name and lora_name != "None":
                 lora_path = folder_paths.get_full_path("loras", lora_name)
                 if lora_path:
-                    lora = comfy.utils.load_torch_file(
-                        lora_path, safe_load=True)
-                    out_model, out_clip = comfy.sd.load_lora_for_models(
-                        out_model, None, lora, strength, strength)
+                    lora = comfy.utils.load_torch_file(lora_path, safe_load=True)
+                    out_model, _out_clip = comfy.sd.load_lora_for_models(
+                        out_model, None, lora, strength, strength
+                    )
 
         return io.NodeOutput(out_model)

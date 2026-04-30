@@ -1,4 +1,5 @@
 from comfy_api.latest import io
+
 from .types import EmbeddrUploadArtifactOptions, EmbeddrUploadArtifactOptionsObject
 
 
@@ -11,24 +12,42 @@ class UploadArtifactOptionsNode(io.ComfyNode):
             category="Embeddr",
             inputs=[
                 io.String.Input(
-                    "storage_provider", tooltip="Override default storage provider for the artifact", default=None),
+                    "storage_provider",
+                    tooltip="Override default storage provider for the artifact",
+                    default=None,
+                ),
                 io.String.Input(
-                    "storage_path", tooltip="Override default storage path for the artifact", default=None),
-
-                io.Boolean.Input("trigger_ingest", default=True,
-                                 tooltip="Trigger ingest process after upload", display_name="Trigger Ingest"),
-                io.String.Input("tags", default=[],
-                                tooltip="Tags to associate with the uploaded artifact", display_name="Tags"),
-                io.String.Input("related_artifact_ids", default=[],
-                                tooltip="IDs of related artifacts", display_name="Related Artifact IDs"),
+                    "storage_path",
+                    tooltip="Override default storage path for the artifact",
+                    default=None,
+                ),
+                io.Boolean.Input(
+                    "trigger_ingest",
+                    default=True,
+                    tooltip="Trigger ingest process after upload",
+                    display_name="Trigger Ingest",
+                ),
+                io.String.Input(
+                    "tags",
+                    default=[],
+                    tooltip="Tags to associate with the uploaded artifact",
+                    display_name="Tags",
+                ),
+                io.String.Input(
+                    "related_artifact_ids",
+                    default=[],
+                    tooltip="IDs of related artifacts",
+                    display_name="Related Artifact IDs",
+                ),
                 # io.Combo.Input(
                 #     "scale_mode", options=[e.value for e in ResizeModeEnum], default="contain",
                 #     tooltip="Choose how images are scaled to fit the target size", display_name="Scale Mode"),
             ],
             outputs=[
                 EmbeddrUploadArtifactOptions.Output(
-                    "options", tooltip="Upload Artifact Options Object", display_name="options"),
-            ]
+                    "options", tooltip="Upload Artifact Options Object", display_name="options"
+                ),
+            ],
         )
 
     @classmethod

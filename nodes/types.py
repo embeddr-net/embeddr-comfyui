@@ -19,7 +19,14 @@ class EmbeddrUploadArtifactOptions(ComfyTypeIO):
 
 
 class EmbeddrUploadArtifactOptionsObject:
-    def __init__(self, storage_provider=None, storage_path=None, trigger_ingest=True, tags=None, related_artifact_ids=None):
+    def __init__(
+        self,
+        storage_provider=None,
+        storage_path=None,
+        trigger_ingest=True,
+        tags=None,
+        related_artifact_ids=None,
+    ):
         self.storage_provider: str | None = storage_provider
         self.storage_path: str | None = storage_path
         self.trigger_ingest: bool = trigger_ingest

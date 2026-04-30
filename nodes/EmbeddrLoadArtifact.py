@@ -1,18 +1,26 @@
-import requests
-from urllib.parse import urljoin, urlparse
 import logging
 import os
-import torch
-import numpy as np
-from PIL import Image, ImageOps
 from io import BytesIO
+from typing import ClassVar
+from urllib.parse import urljoin, urlparse
+
+import numpy as np
+import requests
+import torch
 from comfy_api.latest import io, ui
+from PIL import Image, ImageOps
+
+from .types import (
+    EmbeddrArtifactID,
+    EmbeddrArtifactIDObject,
+    EmbeddrArtifactInfo,
+    EmbeddrArtifactInfoObject,
+)
 from .utils.config import get_auth_headers, get_embeddr_base_url
-from .types import EmbeddrArtifactID, EmbeddrArtifactIDObject, EmbeddrArtifactInfo, EmbeddrArtifactInfoObject
 
 
 class EmbeddrLoadArtifactNode(io.ComfyNode):
-    _cache = {}
+    _cache: ClassVar[dict] = {}
 
     _logger = logging.getLogger("embeddr.comfyui.load_artifact")
 
@@ -32,10 +40,8 @@ class EmbeddrLoadArtifactNode(io.ComfyNode):
     @classmethod
     def _resolve_artifact_url(cls, base_url: str, artifact_id: str, auth_ticket: str = ""):
         resolve_url = f"{base_url}/api/v1/artifacts/{artifact_id}/resolve?variant=original&proxy=1"
-        cls._debug("resolving_artifact", artifact_id=artifact_id,
-                   resolve_url=resolve_url)
-        res = requests.get(
-            resolve_url, headers=get_auth_headers(auth_ticket=auth_ticket))
+        cls._debug("resolving_artifact", artifact_id=artifact_id, resolve_url=resolve_url)
+        res = requests.get(resolve_url, headers=get_auth_headers(auth_ticket=auth_ticket))
         res.raise_for_status()
         data = res.json()
         url = data.get("url")
@@ -65,8 +71,7 @@ class EmbeddrLoadArtifactNode(io.ComfyNode):
                 proxy_url=proxy_url,
             )
             return proxy_url, {}
-        cls._debug("resolved_artifact", artifact_id=artifact_id,
-                   url=url, headers=headers)
+        cls._debug("resolved_artifact", artifact_id=artifact_id, url=url, headers=headers)
         return url, headers
 
     @classmethod
@@ -77,13 +82,21 @@ class EmbeddrLoadArtifactNode(io.ComfyNode):
             description="Loads an image/artifact from Embeddr by UUID.",
             category="Embeddr",
             inputs=[
-                io.String.Input("manual_artifact_id",
-                                tooltip="Manual UUID string (used if input not connected)", default=""),
-                EmbeddrArtifactID.Input("artifact_id",
-                                        tooltip="UUID of the artifact to load", optional=True),
-                io.String.Input("auth_ticket", default="",
-                                tooltip="Ephemeral auth ticket for per-user access", optional=True),
-                io.Boolean.Input("use_cache", default=True)
+                io.String.Input(
+                    "manual_artifact_id",
+                    tooltip="Manual UUID string (used if input not connected)",
+                    default="",
+                ),
+                EmbeddrArtifactID.Input(
+                    "artifact_id", tooltip="UUID of the artifact to load", optional=True
+                ),
+                io.String.Input(
+                    "auth_ticket",
+                    default="",
+                    tooltip="Ephemeral auth ticket for per-user access",
+                    optional=True,
+                ),
+                io.Boolean.Input("use_cache", default=True),
             ],
             outputs=[
                 io.Image.Output("image"),
@@ -110,30 +123,29 @@ class EmbeddrLoadArtifactNode(io.ComfyNode):
 
         if not resolved_id:
             # Return empty black image if no ID
-            empty_image = torch.zeros(
-                (1, 64, 64, 3), dtype=torch.float32, device="cpu")
-            empty_mask = torch.zeros(
-                (1, 64, 64), dtype=torch.float32, device="cpu")
+            empty_image = torch.zeros((1, 64, 64, 3), dtype=torch.float32, device="cpu")
+            empty_mask = torch.zeros((1, 64, 64), dtype=torch.float32, device="cpu")
             return io.NodeOutput(
                 empty_image,
                 empty_mask,
                 EmbeddrArtifactIDObject(artifact_id=""),
-                EmbeddrArtifactInfoObject(data={})
+                EmbeddrArtifactInfoObject(data={}),
             )
 
         cache_key = (resolved_id, str(auth_ticket or ""))
 
         if use_cache and cache_key in cls._cache:
             image, mask, info = cls._cache[cache_key]
-            return io.NodeOutput(image, mask, EmbeddrArtifactIDObject(artifact_id=resolved_id), info)
+            return io.NodeOutput(
+                image, mask, EmbeddrArtifactIDObject(artifact_id=resolved_id), info
+            )
 
         try:
             base_url = get_embeddr_base_url()
 
             # 1. Fetch JSON metadata first
             meta_url = f"{base_url}/api/v1/artifacts/{resolved_id}"
-            meta_res = requests.get(
-                meta_url, headers=get_auth_headers(auth_ticket=auth_ticket))
+            meta_res = requests.get(meta_url, headers=get_auth_headers(auth_ticket=auth_ticket))
             meta_res.raise_for_status()
             artifact_data = meta_res.json()
             info_obj = EmbeddrArtifactInfoObject(data=artifact_data)
@@ -169,20 +181,25 @@ class EmbeddrLoadArtifactNode(io.ComfyNode):
             image = np.array(image).astype(np.float32) / 255.0
             image = torch.from_numpy(image)[None,]
 
-            if 'A' in img.getbands():
-                mask = np.array(img.getchannel('A')).astype(np.float32) / 255.0
-                mask = 1. - torch.from_numpy(mask)
+            if "A" in img.getbands():
+                mask = np.array(img.getchannel("A")).astype(np.float32) / 255.0
+                mask = 1.0 - torch.from_numpy(mask)
             else:
                 mask = torch.zeros((64, 64), dtype=torch.float32, device="cpu")
 
             if use_cache:
                 cls._cache[cache_key] = (image, mask, info_obj)
 
-            return io.NodeOutput(image, mask, EmbeddrArtifactIDObject(artifact_id=resolved_id), info_obj, ui=ui.PreviewImage(image))
+            return io.NodeOutput(
+                image,
+                mask,
+                EmbeddrArtifactIDObject(artifact_id=resolved_id),
+                info_obj,
+                ui=ui.PreviewImage(image),
+            )
 
         except Exception as e:
             print(f"[Embeddr] Error loading artifact {resolved_id}: {e}")
-            cls._debug("artifact_load_failed",
-                       artifact_id=resolved_id, error=str(e))
+            cls._debug("artifact_load_failed", artifact_id=resolved_id, error=str(e))
             # Raise error to stop workflow if loading fails
             raise e

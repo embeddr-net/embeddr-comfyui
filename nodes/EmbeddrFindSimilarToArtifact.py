@@ -1,12 +1,14 @@
+import io as pyio
+
+import numpy as np
 import requests
 import torch
-import numpy as np
+from comfy_api.latest import io
 from PIL import Image
-import io as pyio
-from comfy_api.latest import io, ui
+
+from .types import EmbeddrArtifactID
 from .utils import get_config
 from .utils.config import get_auth_headers
-from .types import EmbeddrArtifactID
 
 
 class EmbeddrFindSimilarToArtifactNode(io.ComfyNode):
@@ -18,8 +20,7 @@ class EmbeddrFindSimilarToArtifactNode(io.ComfyNode):
             description="Finds similar artifacts using an existing Artifact ID.",
             category="Embeddr",
             inputs=[
-                EmbeddrArtifactID.Input(
-                    "artifact_id", tooltip="The Source Artifact ID"),
+                EmbeddrArtifactID.Input("artifact_id", tooltip="The Source Artifact ID"),
                 io.Int.Input("limit", default=5, min=1, max=50),
                 io.String.Input("model_name", default="lotus"),
             ],
@@ -32,8 +33,7 @@ class EmbeddrFindSimilarToArtifactNode(io.ComfyNode):
     @classmethod
     def execute(cls, artifact_id, limit, model_name="lotus"):
         config = get_config()
-        base_url = config.get("embeddr_url") or config.get(
-            "endpoint") or "http://localhost:8003"
+        base_url = config.get("embeddr_url") or config.get("endpoint") or "http://localhost:8003"
         base_url = base_url.rstrip("/")
 
         # Endpoint in Plugin
@@ -46,23 +46,17 @@ class EmbeddrFindSimilarToArtifactNode(io.ComfyNode):
             if isinstance(aid, list):
                 aid = aid[0]  # Take first if list
 
-        data = {
-            "artifact_id": aid,
-            "limit": limit,
-            "model_name": model_name
-        }
+        data = {"artifact_id": aid, "limit": limit, "model_name": model_name}
 
         try:
             # Search
-            response = requests.post(
-                api_url, data=data, headers=get_auth_headers())
+            response = requests.post(api_url, data=data, headers=get_auth_headers())
             response.raise_for_status()
             results = response.json()
             items = results.get("items", [])
 
             if not items:
-                empty = torch.zeros(
-                    (1, 64, 64, 3), dtype=torch.float32, device="cpu")
+                empty = torch.zeros((1, 64, 64, 3), dtype=torch.float32, device="cpu")
                 return io.NodeOutput([empty], ["-1"])
 
             output_images = []
@@ -73,8 +67,7 @@ class EmbeddrFindSimilarToArtifactNode(io.ComfyNode):
                 content_url = f"{base_url}/api/v1/plugins/embeddr-comfyui/content/{art_id}"
 
                 try:
-                    img_resp = requests.get(
-                        content_url, headers=get_auth_headers())
+                    img_resp = requests.get(content_url, headers=get_auth_headers())
                     if img_resp.status_code == 200:
                         i = Image.open(pyio.BytesIO(img_resp.content))
                         i = i.convert("RGB")
@@ -82,18 +75,15 @@ class EmbeddrFindSimilarToArtifactNode(io.ComfyNode):
                         output_images.append(torch.from_numpy(i_np)[None,])
                         output_ids.append(str(art_id))
                 except Exception as e:
-                    print(
-                        f"Failed to fetch content for similar item {art_id}: {e}")
+                    print(f"Failed to fetch content for similar item {art_id}: {e}")
 
             if not output_images:
-                empty = torch.zeros(
-                    (1, 64, 64, 3), dtype=torch.float32, device="cpu")
+                empty = torch.zeros((1, 64, 64, 3), dtype=torch.float32, device="cpu")
                 return io.NodeOutput([empty], ["-1"])
 
             return io.NodeOutput(output_images, output_ids)
 
         except Exception as e:
             print(f"[Embeddr] FindSimilarToID Error: {e}")
-            empty = torch.zeros(
-                (1, 64, 64, 3), dtype=torch.float32, device="cpu")
+            empty = torch.zeros((1, 64, 64, 3), dtype=torch.float32, device="cpu")
             return io.NodeOutput([empty], ["-1"])

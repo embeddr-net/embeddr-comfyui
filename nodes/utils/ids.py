@@ -1,6 +1,6 @@
 def normalize_ids(value) -> list[str]:
     """
-    Normalizes a variety of input types (single string, list of strings, 
+    Normalizes a variety of input types (single string, list of strings,
     comma-separated strings, EmbeddrArtifactIDObjects) into a clean list of string IDs.
     """
     if not value:
@@ -32,7 +32,7 @@ def normalize_ids(value) -> list[str]:
     out = []
     seen = set()
     for s in raw_strings:
-        parts = s.split(',')
+        parts = s.split(",")
         for p in parts:
             clean_p = p.strip()
             if not clean_p:

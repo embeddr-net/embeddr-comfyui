@@ -1,4 +1,5 @@
-from comfy_api.latest import io, ui
+from comfy_api.latest import io
+
 from .types import EmbeddrArtifactID
 
 
@@ -14,7 +15,10 @@ class EmbeddrMergeIDsNode(io.ComfyNode):
             inputs=[],
             outputs=[
                 EmbeddrArtifactID.Output(
-                    "artifact_ids", tooltip="List of merged Artifact IDs", display_name="artifact_ids"),
+                    "artifact_ids",
+                    tooltip="List of merged Artifact IDs",
+                    display_name="artifact_ids",
+                ),
             ],
         )
 

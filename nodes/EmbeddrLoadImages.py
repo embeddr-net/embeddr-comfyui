@@ -1,20 +1,22 @@
-import requests
-from urllib.parse import urljoin, urlparse
 import logging
 import os
-import torch
-import numpy as np
-from PIL import Image, ImageOps
 from io import BytesIO
-import random
-from comfy_api.latest import io, ui
+from typing import ClassVar
+from urllib.parse import urljoin, urlparse
+
+import numpy as np
+import requests
+import torch
+from comfy_api.latest import io
+from PIL import Image, ImageOps
+
 from .utils import get_config
 from .utils.api import get_collections, get_libraries
 from .utils.config import get_auth_headers
 
 
 class EmbeddrLoadImagesNode(io.ComfyNode):
-    _cache = {}
+    _cache: ClassVar[dict] = {}
 
     _logger = logging.getLogger("embeddr.comfyui.load_images")
 
@@ -34,10 +36,8 @@ class EmbeddrLoadImagesNode(io.ComfyNode):
     @classmethod
     def _resolve_artifact_url(cls, base_url: str, artifact_id: str, auth_ticket: str = ""):
         resolve_url = f"{base_url}/api/v1/artifacts/{artifact_id}/resolve?variant=original&proxy=1"
-        cls._debug("resolving_artifact", artifact_id=artifact_id,
-                   resolve_url=resolve_url)
-        res = requests.get(
-            resolve_url, headers=get_auth_headers(auth_ticket=auth_ticket))
+        cls._debug("resolving_artifact", artifact_id=artifact_id, resolve_url=resolve_url)
+        res = requests.get(resolve_url, headers=get_auth_headers(auth_ticket=auth_ticket))
         res.raise_for_status()
         data = res.json()
         url = data.get("url")
@@ -59,17 +59,16 @@ class EmbeddrLoadImagesNode(io.ComfyNode):
                 proxy_url=proxy_url,
             )
             return proxy_url, {}
-        cls._debug("resolved_artifact", artifact_id=artifact_id,
-                   url=url, headers=headers)
+        cls._debug("resolved_artifact", artifact_id=artifact_id, url=url, headers=headers)
         return url, headers
 
     @classmethod
     def define_schema(cls) -> io.Schema:
         # Note: Dynamic fetching (get_collections) might need updates to V2 too
         # but for now we focus on the execution logic
-        collections = ["All"] + get_collections()
+        collections = ["All", *get_collections()]
         # Legacy libraries -> Folders/Collections?
-        libraries = ["All"] + get_libraries()
+        libraries = ["All", *get_libraries()]
 
         return io.Schema(
             node_id="embeddr.EmbeddrLoadImages",
@@ -78,15 +77,16 @@ class EmbeddrLoadImagesNode(io.ComfyNode):
             category="Embeddr",
             inputs=[
                 io.Combo.Input("library", options=libraries, default="All"),
-                io.Combo.Input(
-                    "collection", options=collections, default="All"),
-                io.Combo.Input("sort_by", options=[
-                               "newest", "random"], default="newest"),
+                io.Combo.Input("collection", options=collections, default="All"),
+                io.Combo.Input("sort_by", options=["newest", "random"], default="newest"),
                 io.Int.Input("limit", default=5, min=1, max=100),
-                io.String.Input("auth_ticket", default="",
-                                tooltip="Ephemeral auth ticket for per-user access", optional=True),
-                io.Int.Input("seed", default=0,
-                             display_name="Seed (Random Sort)"),
+                io.String.Input(
+                    "auth_ticket",
+                    default="",
+                    tooltip="Ephemeral auth ticket for per-user access",
+                    optional=True,
+                ),
+                io.Int.Input("seed", default=0, display_name="Seed (Random Sort)"),
             ],
             outputs=[
                 io.Image.Output("images", is_output_list=True),
@@ -98,15 +98,15 @@ class EmbeddrLoadImagesNode(io.ComfyNode):
     @classmethod
     def execute(cls, library, collection, sort_by, limit, auth_ticket: str = "", seed=0):
         # Cache key based on inputs
-        cache_key = (library, collection, sort_by,
-                     limit, seed, str(auth_ticket or ""))
+        cache_key = (library, collection, sort_by, limit, seed, str(auth_ticket or ""))
         if cache_key in cls._cache:
             return cls._cache[cache_key]
 
         try:
             config = get_config()
-            base_url = config.get("embeddr_url") or config.get(
-                "endpoint") or "http://localhost:8003"
+            base_url = (
+                config.get("embeddr_url") or config.get("endpoint") or "http://localhost:8003"
+            )
             base_url = base_url.rstrip("/")
 
             # V2 API: List Artifacts
@@ -115,7 +115,7 @@ class EmbeddrLoadImagesNode(io.ComfyNode):
             params = {
                 "limit": limit,
                 "type_name": "image",  # Filter for images
-                "offset": 0
+                "offset": 0,
             }
 
             # Parse Collection ID (UUID in V2?)
@@ -124,7 +124,7 @@ class EmbeddrLoadImagesNode(io.ComfyNode):
                 try:
                     col_id = collection.split(":")[0].strip()
                     params["collection_id"] = col_id
-                except:
+                except Exception:
                     pass
 
             # Legacy Libraries mapped to ?
@@ -133,7 +133,7 @@ class EmbeddrLoadImagesNode(io.ComfyNode):
                 try:
                     lib_id = library.split(":")[0].strip()
                     params["library_id"] = lib_id
-                except:
+                except Exception:
                     pass
 
             if sort_by == "random":
@@ -143,7 +143,8 @@ class EmbeddrLoadImagesNode(io.ComfyNode):
                 params["sort"] = "new"
 
             response = requests.get(
-                api_url, params=params, headers=get_auth_headers(auth_ticket=auth_ticket))
+                api_url, params=params, headers=get_auth_headers(auth_ticket=auth_ticket)
+            )
             response.raise_for_status()
             data = response.json()
             items = data.get("items", [])
@@ -163,7 +164,8 @@ class EmbeddrLoadImagesNode(io.ComfyNode):
                 # Fetch Content via Plugin Endpoint
                 # Uses the plugin endpoint we defined to get raw content
                 content_url, content_headers = cls._resolve_artifact_url(
-                    base_url, art_id, auth_ticket)
+                    base_url, art_id, auth_ticket
+                )
 
                 cls._debug(
                     "requesting_artifact_content",
@@ -176,8 +178,7 @@ class EmbeddrLoadImagesNode(io.ComfyNode):
                     if content_headers:
                         final_headers.update(content_headers)
 
-                    img_resp = requests.get(
-                        content_url, headers=final_headers)
+                    img_resp = requests.get(content_url, headers=final_headers)
                     img_resp.raise_for_status()
                     cls._debug(
                         "artifact_content_response",
@@ -196,13 +197,15 @@ class EmbeddrLoadImagesNode(io.ComfyNode):
                     images_list.append(torch.from_numpy(i_np))
 
                     # Mask
-                    if 'A' in img.getbands():
-                        m_np = np.array(img.getchannel('A')).astype(
-                            np.float32) / 255.0
-                        masks_list.append(1. - torch.from_numpy(m_np))
+                    if "A" in img.getbands():
+                        m_np = np.array(img.getchannel("A")).astype(np.float32) / 255.0
+                        masks_list.append(1.0 - torch.from_numpy(m_np))
                     else:
-                        masks_list.append(torch.zeros(
-                            (i_np.shape[0], i_np.shape[1]), dtype=torch.float32, device="cpu"))
+                        masks_list.append(
+                            torch.zeros(
+                                (i_np.shape[0], i_np.shape[1]), dtype=torch.float32, device="cpu"
+                            )
+                        )
 
                     ids_list.append(str(art_id))
 
@@ -242,8 +245,6 @@ class EmbeddrLoadImagesNode(io.ComfyNode):
 
     @classmethod
     def _return_empty(cls):
-        empty_image = torch.zeros(
-            (1, 64, 64, 3), dtype=torch.float32, device="cpu")
-        empty_mask = torch.zeros(
-            (1, 64, 64), dtype=torch.float32, device="cpu")
+        empty_image = torch.zeros((1, 64, 64, 3), dtype=torch.float32, device="cpu")
+        empty_mask = torch.zeros((1, 64, 64), dtype=torch.float32, device="cpu")
         return io.NodeOutput([empty_image], ["-1"], [empty_mask])

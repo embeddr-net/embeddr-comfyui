@@ -1,6 +1,7 @@
 import requests
 from comfy_api.latest import io
-from .utils.config import get_config, get_auth_headers
+
+from .utils.config import get_auth_headers, get_config
 
 
 def Embeddr_Log(message: str):
@@ -15,25 +16,33 @@ class EmbeddrFindCollectionNode(io.ComfyNode):
             display_name="Embeddr Find Collection",
             category="Embeddr",
             inputs=[
-                io.String.Input("collection_name", default="", optional=True,
-                                tooltip="Name to find (or create if missing)"),
-                io.String.Input("collection_id", default="",
-                                tooltip="Direct Collection ID (overrides Name)"),
-                io.Boolean.Input("create_if_missing", default=True,
-                                 tooltip="Create collection if it doesn't exist (Only applies to Name)"),
+                io.String.Input(
+                    "collection_name",
+                    default="",
+                    optional=True,
+                    tooltip="Name to find (or create if missing)",
+                ),
+                io.String.Input(
+                    "collection_id", default="", tooltip="Direct Collection ID (overrides Name)"
+                ),
+                io.Boolean.Input(
+                    "create_if_missing",
+                    default=True,
+                    tooltip="Create collection if it doesn't exist (Only applies to Name)",
+                ),
             ],
             outputs=[
                 io.String.Output("collection_id"),
-            ]
+            ],
         )
 
     @classmethod
     def execute(cls, collection_name, create_if_missing, collection_id=""):
         Embeddr_Log(
-            f"EXECUTE FindCollection: name='{collection_name}', id='{collection_id}', create={create_if_missing}")
+            f"EXECUTE FindCollection: name='{collection_name}', id='{collection_id}', create={create_if_missing}"
+        )
         config = get_config()
-        base_url = config.get("embeddr_url") or config.get(
-            "endpoint") or "http://localhost:8003"
+        base_url = config.get("embeddr_url") or config.get("endpoint") or "http://localhost:8003"
         base_url = base_url.rstrip("/")
 
         # 1. Direct ID Priority
@@ -45,8 +54,7 @@ class EmbeddrFindCollectionNode(io.ComfyNode):
         try:
             # 2. List Collections to Find by Name
             # Note: Removed limit=1000 to avoid potential 422 if API doesn't support it
-            resp = requests.get(
-                f"{base_url}/api/v1/collections", headers=get_auth_headers())
+            resp = requests.get(f"{base_url}/api/v1/collections", headers=get_auth_headers())
             # If 404, maybe endpoint is different.
             if resp.status_code == 404:
                 # Fallback to V1? Or just fail.
@@ -72,24 +80,26 @@ class EmbeddrFindCollectionNode(io.ComfyNode):
 
             if found:
                 Embeddr_Log(
-                    f"Found Collection: {found.get('label', 'Unnamed')} ({found.get('id')})")
+                    f"Found Collection: {found.get('label', 'Unnamed')} ({found.get('id')})"
+                )
                 return io.NodeOutput(str(found.get("id")))
 
             if collection_name and create_if_missing:
                 # Create
-                payload = {"label": collection_name,
-                           "type_name": "collection:mix",
-                           "uri": f"embeddr:///collections/{collection_name.lower().replace(' ', '_')}"}
+                payload = {
+                    "label": collection_name,
+                    "type_name": "collection:mix",
+                    "uri": f"embeddr:///collections/{collection_name.lower().replace(' ', '_')}",
+                }
                 resp = requests.post(
-                    f"{base_url}/api/v1/collections", json=payload, headers=get_auth_headers())
+                    f"{base_url}/api/v1/collections", json=payload, headers=get_auth_headers()
+                )
                 resp.raise_for_status()
                 new_col = resp.json()
-                Embeddr_Log(
-                    f"Created Collection: {new_col.get('label')} ({new_col.get('id')})")
+                Embeddr_Log(f"Created Collection: {new_col.get('label')} ({new_col.get('id')})")
                 return io.NodeOutput(str(new_col.get("id")))
 
-            Embeddr_Log(
-                f"Collection '{collection_name}' not found and creation disabled.")
+            Embeddr_Log(f"Collection '{collection_name}' not found and creation disabled.")
             # Fallback to empty string
             return io.NodeOutput("")
 
