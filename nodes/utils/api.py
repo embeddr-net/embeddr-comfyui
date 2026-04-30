@@ -1,34 +1,36 @@
 import requests
-from .config import get_config
+
+from .config import get_auth_headers, get_embeddr_base_url
+
+
+def _fetch_collection_options(category: str | None = None) -> list[str]:
+    try:
+        base_url = get_embeddr_base_url().rstrip("/")
+        api_url = f"{base_url}/api/v1/collections"
+        params = {"category": category} if category else None
+        response = requests.get(api_url, params=params, headers=get_auth_headers())
+        response.raise_for_status()
+
+        data = response.json()
+        items = data if isinstance(data, list) else data.get("items") or []
+        out: list[str] = []
+        for item in items:
+            if not isinstance(item, dict):
+                continue
+            item_id = str(item.get("id") or "").strip()
+            label = str(item.get("label") or item.get("name") or "").strip()
+            if not item_id or not label:
+                continue
+            out.append(f"{item_id}: {label}")
+        return out
+    except Exception as exc:
+        print(f"[Embeddr] Failed to fetch collections(category={category}): {exc}")
+        return []
 
 
 def get_libraries():
-    try:
-        config = get_config()
-        endpoint = config.get("endpoint", "http://localhost:8003")
-        api_url = endpoint.rstrip("/") + "/api/v1/libraries"
-        response = requests.get(api_url)
-        if response.status_code == 200:
-            data = response.json()
-            # Return list of names, but we might need IDs.
-            # ComfyUI Combo inputs usually take a list of strings.
-            # We can format as "Name (ID)" or just names if unique.
-            # Let's return a list of strings formatted as "ID: Name" for easy parsing
-            return [f"{lib['id']}: {lib['name']}" for lib in data]
-    except Exception as e:
-        print(f"[Embeddr] Failed to fetch libraries: {e}")
-    return []
+    return _fetch_collection_options("library")
 
 
 def get_collections():
-    try:
-        config = get_config()
-        endpoint = config.get("endpoint", "http://localhost:8003")
-        api_url = endpoint.rstrip("/") + "/api/v1/collections"
-        response = requests.get(api_url)
-        if response.status_code == 200:
-            data = response.json()
-            return [f"{col['id']}: {col['name']}" for col in data]
-    except Exception as e:
-        print(f"[Embeddr] Failed to fetch collections: {e}")
-    return []
+    return _fetch_collection_options()

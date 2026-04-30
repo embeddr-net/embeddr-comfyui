@@ -1,6 +1,13 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 // @ts-ignore
 import { app } from "../../../scripts/app.js";
+import {
+  applyThemePackComfyBridge,
+  applyThemePackCss,
+  applyThemePackTokens,
+  clearThemePackTokens,
+  loadThemePacks,
+} from "../utils/themePacks";
 import type { ApiMode } from "@types";
 
 interface UseEmbeddrSettingsProps {
@@ -10,58 +17,128 @@ interface UseEmbeddrSettingsProps {
 export function useEmbeddrSettings({
   baseUrl = "http://localhost:8003",
 }: UseEmbeddrSettingsProps = {}) {
+  const normalizeEndpoint = (value: string) =>
+    value.replace(/\/api\/v1\/?$/, "").replace(/\/+$/, "");
+
   const [endpoint, setEndpoint] = useState(() => {
     const stored = localStorage.getItem("embeddr_endpoint");
-    return stored || baseUrl;
+    return normalizeEndpoint(stored || baseUrl);
   });
 
   const [mode, setMode] = useState<ApiMode>(() => "local");
 
+  const [apiKey, setApiKey] = useState(() => {
+    return localStorage.getItem("embeddr_api_key") || "";
+  });
+
   const [gridSize, setGridSize] = useState(() =>
-    parseInt(localStorage.getItem("embeddr_grid_size") || "3")
+    parseInt(localStorage.getItem("embeddr_grid_size") || "3"),
   );
 
   const [gridPreviewContain, setGridPreviewContain] = useState(
-    () => localStorage.getItem("embeddr_grid_preview_contain") === "true"
+    () => localStorage.getItem("embeddr_grid_preview_contain") === "true",
   );
 
   const [theme, setTheme] = useState(() => {
     return localStorage.getItem("embeddr_theme") || "dark";
   });
 
+  const [themePackId, setThemePackId] = useState(() => {
+    return localStorage.getItem("embeddr_theme_pack") || "";
+  });
+
+  const appliedTokenKeysRef = useRef<Array<string>>([]);
+
   const [configLoaded, setConfigLoaded] = useState(false);
 
   // computed API base for requests
   const apiBase = useMemo(() => {
-    const url = endpoint.replace(/\/$/, ""); // remove trailing slash
-    return `${url}/api/v1`; // append API path automatically
+    const url = normalizeEndpoint(endpoint);
+    return url ? `${url}/api/v1` : "/api/v1";
   }, [endpoint]);
 
   // Apply theme
   useEffect(() => {
-    const container = document.querySelector(".embeddr-sidebar-container");
-    if (container) {
+    const roots = [
+      document.documentElement,
+      document.body,
+      ...Array.from(document.querySelectorAll<HTMLElement>(".embeddr-theme-root")),
+    ];
+    roots.forEach((root) => {
       if (theme === "dark") {
-        container.classList.add("dark");
+        root.classList.add("dark");
+        root.classList.add("dark-theme");
       } else {
-        container.classList.remove("dark");
-      }
-    }
-
-    // Also handle portals immediately
-    const portals = document.querySelectorAll(
-      "[data-radix-portal], [data-slot='dialog-content'], [data-slot='dialog-overlay'], [data-slot='select-content'], [data-slot='select-viewport'], [data-slot='popover-content'], [data-slot='dropdown-menu-content']"
-    );
-    portals.forEach((portal) => {
-      if (theme === "dark") {
-        portal.classList.add("dark");
-      } else {
-        portal.classList.remove("dark");
+        root.classList.remove("dark");
+        root.classList.remove("dark-theme");
       }
     });
 
     localStorage.setItem("embeddr_theme", theme);
   }, [theme]);
+
+  useEffect(() => {
+    localStorage.setItem("embeddr_theme_pack", themePackId);
+  }, [themePackId]);
+
+  useEffect(() => {
+    const roots = [document.documentElement, document.body];
+    roots.forEach((root) => {
+      if (themePackId) {
+        root.setAttribute("data-embeddr-theme-pack", "1");
+      } else {
+        root.removeAttribute("data-embeddr-theme-pack");
+      }
+    });
+  }, [themePackId]);
+
+  useEffect(() => {
+    let isActive = true;
+
+    const applyTheme = async () => {
+      if (!apiBase) return;
+      const targets = [
+        document.documentElement,
+        document.body,
+        ...Array.from(document.querySelectorAll<HTMLElement>(".embeddr-theme-root")),
+      ];
+
+      clearThemePackTokens(targets, appliedTokenKeysRef.current);
+      applyThemePackComfyBridge(Boolean(themePackId));
+
+      if (!themePackId) {
+        applyThemePackCss(null);
+        appliedTokenKeysRef.current = [];
+        return;
+      }
+
+      try {
+        const packs = await loadThemePacks(apiBase);
+        if (!isActive) return;
+        const pack = packs.find((item) => item.id === themePackId);
+        if (!pack) {
+          applyThemePackCss(null);
+          applyThemePackComfyBridge(false);
+          appliedTokenKeysRef.current = [];
+          return;
+        }
+
+        applyThemePackCss(pack);
+        appliedTokenKeysRef.current = applyThemePackTokens(
+          targets,
+          pack,
+          theme === "dark" ? "dark" : "light",
+        );
+      } catch (e) {
+        console.warn("[EmbeddrUI] Failed to load theme packs", e);
+      }
+    };
+
+    applyTheme();
+    return () => {
+      isActive = false;
+    };
+  }, [apiBase, theme, themePackId]);
 
   // Load config on mount
   useEffect(() => {
@@ -71,8 +148,9 @@ export function useEmbeddrSettings({
         const data = await res.json();
 
         if (data.endpoint) {
-          setEndpoint(new URL(data.endpoint).toString());
-          localStorage.setItem("embeddr_endpoint", data.endpoint);
+          const normalized = normalizeEndpoint(new URL(data.endpoint).toString());
+          setEndpoint(normalized);
+          localStorage.setItem("embeddr_endpoint", normalized);
         }
 
         if (data.mode) {
@@ -80,12 +158,21 @@ export function useEmbeddrSettings({
           localStorage.setItem("embeddr_mode", data.mode);
         }
 
+        if (data.api_key) {
+          setApiKey(data.api_key);
+          localStorage.setItem("embeddr_api_key", data.api_key);
+        }
+
         if (data.grid_preview_contain !== undefined) {
           setGridPreviewContain(data.grid_preview_contain);
           localStorage.setItem(
             "embeddr_grid_preview_contain",
-            data.grid_preview_contain.toString()
+            data.grid_preview_contain.toString(),
           );
+        }
+
+        if (data.auth_salt) {
+          localStorage.setItem("embeddr_auth_salt", data.auth_salt);
         }
       } catch (e) {
         console.error("Failed to load config", e);
@@ -100,33 +187,40 @@ export function useEmbeddrSettings({
     newEndpoint: string,
     newMode: ApiMode,
     newGridSize: number,
-    newGridPreviewContain: boolean
+    newGridPreviewContain: boolean,
+    newApiKey?: string,
   ) => {
     try {
-      localStorage.setItem("embeddr_endpoint", newEndpoint);
+      const normalizedEndpoint = normalizeEndpoint(newEndpoint);
+      localStorage.setItem("embeddr_endpoint", normalizedEndpoint);
       localStorage.setItem("embeddr_mode", newMode);
       localStorage.setItem("embeddr_grid_size", newGridSize.toString());
-      localStorage.setItem(
-        "embeddr_grid_preview_contain",
-        newGridPreviewContain.toString()
-      );
+      localStorage.setItem("embeddr_grid_preview_contain", newGridPreviewContain.toString());
+
+      const payload: any = {
+        endpoint: normalizedEndpoint,
+        mode: newMode,
+        grid_size: newGridSize,
+        grid_preview_contain: newGridPreviewContain,
+      };
+
+      if (newApiKey !== undefined) {
+        payload.api_key = newApiKey;
+        setApiKey(newApiKey);
+        localStorage.setItem("embeddr_api_key", newApiKey);
+      }
 
       const res = await fetch("/embeddr/config", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          endpoint: newEndpoint,
-          mode: newMode,
-          grid_size: newGridSize,
-          grid_preview_contain: newGridPreviewContain,
-        }),
+        body: JSON.stringify(payload),
       });
 
       if (!res.ok) {
         throw new Error(`Server returned ${res.status}`);
       }
 
-      setEndpoint(newEndpoint);
+      setEndpoint(normalizedEndpoint);
       setMode(newMode);
       setGridSize(newGridSize);
       setGridPreviewContain(newGridPreviewContain);
@@ -170,7 +264,11 @@ export function useEmbeddrSettings({
     setGridPreviewContain,
     theme,
     setTheme,
+    themePackId,
+    setThemePackId,
     configLoaded,
+    apiKey,
+    setApiKey,
     apiBase,
     saveSettings,
   };

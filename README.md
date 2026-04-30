@@ -18,9 +18,7 @@
 4. Run Embeddr-CLI with `embeddr serve`
 5. Run ComfyUI
 
-
 ## Usage
-
 
 ### Use New Load & Save Image
 
@@ -32,8 +30,7 @@
 
 ![Example Retrieval](.github/assets/retrieval_nodes.png)
 
-
-### Access more info on the [WebUI](https://github.com/embeddr-net/embeddr-cli) 
+### Access more info on the [WebUI](https://github.com/embeddr-net/embeddr-cli)
 
 ![Example Lineage](.github/assets/lineage_large.png)
 

@@ -1,4 +1,4 @@
-include LICENSE.txt
+include LICENSE
 include README.md
 include pyproject.toml
 include __init__.py
@@ -8,5 +8,3 @@ recursive-include nodes *
 
 exclude ui
 recursive-exclude ui *
-exclude dist-artifact
-recursive-exclude dist-artifact *

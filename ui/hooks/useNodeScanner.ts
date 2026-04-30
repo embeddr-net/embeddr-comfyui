@@ -13,9 +13,7 @@ export function useNodeScanner() {
   useEffect(() => {
     const scan = () => {
       if (!app.graph) return;
-      const nodes = app.graph.findNodesByType
-        ? app.graph.findNodesByType("embeddr.LoadImage")
-        : [];
+      const nodes = app.graph.findNodesByType ? app.graph.findNodesByType("embeddr.LoadImage") : [];
 
       if (nodes) {
         const info = nodes.map((n: any) => ({
@@ -84,10 +82,7 @@ export function useNodeScanner() {
       const LiteGraph = window.LiteGraph;
       const node = LiteGraph.createNode("embeddr.LoadImage");
       if (node) {
-        node.pos = [
-          app.canvas.graph_mouse[0] || 0,
-          app.canvas.graph_mouse[1] || 0,
-        ];
+        node.pos = [app.canvas.graph_mouse[0] || 0, app.canvas.graph_mouse[1] || 0];
         if (node.widgets && node.widgets[0]) {
           node.widgets[0].value = imageUrl;
         }

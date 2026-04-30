@@ -4,18 +4,16 @@ import {
   ResizableHandle,
   ResizablePanel,
   ResizablePanelGroup,
-} from "@embeddr/react-ui/components/resizable";
-import { Search, Grid3X3 } from "lucide-react";
-import { Slider } from "@embeddr/react-ui/components/slider";
+  Slider,
+} from "@embeddr/react-ui/components/ui";
+import { Grid3X3, Search } from "lucide-react";
 import { ImageGrid } from "@components/ui/ImageGrid";
 import { useNodeScanner } from "@hooks/useNodeScanner";
 import { ImageDetails } from "../panels/ImageDetails";
 import { SearchBar } from "../ui/SearchBar";
-import type {
-  ApiMode,
-  LibraryPath,
-  PromptImageRead,
-} from "@hooks/useEmbeddrApi";
+import { useEmbeddrCollections } from "../../hooks/useEmbeddrCollections";
+import type { ApiMode, LibraryPath, PromptImageRead } from "@hooks/useEmbeddrApi";
+import type { EmbeddrApiClient } from "@embeddr/client-typescript";
 
 interface ExploreTabProps {
   images: Array<PromptImageRead>;
@@ -26,18 +24,22 @@ interface ExploreTabProps {
     query?: string,
     viewMode?: "all" | "mine",
     libId?: number | null,
-    similarId?: number | null
+    similarId?: string | number | null,
+    collectionId?: string | null,
   ) => Promise<void>;
   libraries: Array<LibraryPath>;
-  similarImageId: number | null;
-  setSimilarImageId: (id: number | null) => void;
+  similarImageId: string | number | null;
+  setSimilarImageId: (id: string | number | null) => void;
   mode: ApiMode;
+  apiBase?: string; // Need apiBase for collections
+  apiClient?: EmbeddrApiClient;
   gridSize: number;
   setGridSize?: (size: number) => void;
   gridPreviewContain: boolean;
   configLoaded: boolean;
   activeTab: string;
   onImageSelect?: (image: PromptImageRead) => void;
+  apiKey?: string;
 }
 
 export function ExploreTab({
@@ -49,31 +51,46 @@ export function ExploreTab({
   similarImageId,
   setSimilarImageId,
   mode,
+  apiBase = "",
+  apiClient,
   gridSize,
   setGridSize,
   gridPreviewContain,
   configLoaded,
   activeTab,
   onImageSelect,
+  apiKey,
 }: ExploreTabProps) {
   const { targetNodes, handleLoadIntoNode, handleUseImage } = useNodeScanner();
-  const { openImage, closeImage, setGalleryImages, currentGallery } =
-    useImageDialog();
+  const { openImage, closeImage, setGalleryImages, currentGallery } = useImageDialog();
+
+  const { collections, fetchCollections } = useEmbeddrCollections({
+    apiBase,
+    configLoaded,
+    apiClient,
+  });
+
+  // Load collections on mount/config load
+  useEffect(() => {
+    if (configLoaded) {
+      fetchCollections();
+    }
+  }, [configLoaded, fetchCollections]);
 
   const [searchQuery, setSearchQuery] = useState("");
   const [viewMode, setViewMode] = useState<"all" | "mine">("all");
-  const [selectedLibrary, setSelectedLibrary] = useState<string>("all");
-  const [selectedImage, setSelectedImage] = useState<PromptImageRead | null>(
-    null
-  );
+  const [selectedCollectionId, setSelectedCollectionId] = useState<string>("all");
+  const [selectedImage, setSelectedImage] = useState<PromptImageRead | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   // Fetch when dependencies change
   useEffect(() => {
     if (!configLoaded) return;
-    const libId = selectedLibrary === "all" ? null : parseInt(selectedLibrary);
-    fetchImages(true, searchQuery, viewMode, libId, similarImageId);
-  }, [viewMode, configLoaded, selectedLibrary, mode, similarImageId]); // Re-fetch when view mode changes or config is loaded
+    const colId = selectedCollectionId === "all" ? null : selectedCollectionId;
+    scrollRef.current?.scrollTo({ top: 0 });
+    // libraryId is null now as we use collections
+    fetchImages(true, searchQuery, viewMode, null, similarImageId, colId);
+  }, [viewMode, configLoaded, selectedCollectionId, mode, similarImageId]); // Re-fetch when view mode changes or config is loaded
 
   // Sync images to lightbox when they change
   useEffect(() => {
@@ -90,8 +107,9 @@ export function ExploreTab({
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
-    const libId = selectedLibrary === "all" ? null : parseInt(selectedLibrary);
-    fetchImages(true, searchQuery, viewMode, libId, similarImageId);
+    const colId = selectedCollectionId === "all" ? null : selectedCollectionId;
+    scrollRef.current?.scrollTo({ top: 0 });
+    fetchImages(true, searchQuery, viewMode, null, similarImageId, colId);
   };
 
   return (
@@ -112,18 +130,15 @@ export function ExploreTab({
                 }
               }}
               mode={mode}
-              selectedLibrary={selectedLibrary}
-              setSelectedLibrary={setSelectedLibrary}
-              libraries={libraries}
+              selectedCollectionId={selectedCollectionId}
+              setSelectedCollectionId={setSelectedCollectionId}
+              collections={collections}
               viewMode={viewMode}
               setViewMode={setViewMode}
             />
           </div>
           {setGridSize && (
-            <div
-              className="w-32 pt-2 flex items-center gap-2"
-              title="Grid Size"
-            >
+            <div className="w-32 pt-2 flex items-center gap-2" title="Grid Size">
               <Grid3X3 className="w-4 h-4 text-muted-foreground" />
               <Slider
                 value={[gridSize]}
@@ -148,22 +163,16 @@ export function ExploreTab({
               gridSize={gridSize}
               imagePreviewContain={gridPreviewContain}
               scrollRef={scrollRef}
+              apiKey={apiKey}
               onRightClick={(e) => {
                 setSelectedImage(e);
               }}
               onLoadMore={() => {
-                const libId =
-                  selectedLibrary === "all" ? null : parseInt(selectedLibrary);
-                fetchImages(
-                  false,
-                  searchQuery,
-                  viewMode,
-                  libId,
-                  similarImageId
-                );
+                const colId = selectedCollectionId === "all" ? null : selectedCollectionId;
+                fetchImages(false, searchQuery, viewMode, null, similarImageId, colId);
               }}
-              onSimilarSearch={(image) => {
-                setSimilarImageId(image);
+              onSimilarSearch={(imageId) => {
+                setSimilarImageId(imageId);
               }}
               onSelect={(image) => {
                 if (!image) return;
@@ -177,30 +186,25 @@ export function ExploreTab({
                   metadata: p,
                 }));
                 const index = images.findIndex((p) => p.id === image.id);
-                const totalImages = hasMore
-                  ? images.length + 100
-                  : images.length;
+                const totalImages = hasMore ? images.length + 100 : images.length;
 
                 openImage(
                   image.image_url,
                   {
                     id: "virtual-gallery",
-                    name:
-                      activeTab === "explore" ? "Explore" : "Search Results",
+                    name: activeTab === "explore" ? "Explore" : "Search Results",
                     images: galleryImages,
                     totalImages: totalImages,
                     fetchMore: async (_dir: any, _offset: any) => {
                       if (hasMore) {
-                        const libId =
-                          selectedLibrary === "all"
-                            ? null
-                            : parseInt(selectedLibrary);
+                        const colId = selectedCollectionId === "all" ? null : selectedCollectionId;
                         await fetchImages(
                           false,
                           searchQuery,
                           viewMode,
-                          libId,
-                          similarImageId
+                          null,
+                          similarImageId,
+                          colId,
                         );
                       }
                     },
@@ -212,9 +216,7 @@ export function ExploreTab({
                       icon: <Search className="w-4 h-4" />,
                       label: "Search by Image",
                       onClick: (galleryImage) => {
-                        const img = galleryImage?.metadata as
-                          | PromptImageRead
-                          | undefined;
+                        const img = galleryImage?.metadata as PromptImageRead | undefined;
                         if (img) {
                           setSimilarImageId(img.id);
                         } else {
@@ -224,7 +226,7 @@ export function ExploreTab({
                       },
                     },
                   ],
-                  image.prompt
+                  image.prompt,
                 );
               }}
               selectedId={selectedImage?.id}
@@ -233,16 +235,15 @@ export function ExploreTab({
           {selectedImage && (
             <>
               <ResizableHandle className="mt-1" />
-              <ResizablePanel
-                defaultSize={30}
-                minSize={20}
-                className="flex flex-col gap-3 py-1 "
-              >
+              <ResizablePanel defaultSize={30} minSize={20} className="flex flex-col gap-3 py-1 ">
                 <ImageDetails
                   selectedImage={selectedImage}
                   targetNodes={targetNodes}
                   onUseImage={handleUseImage}
                   onLoadIntoNode={handleLoadIntoNode}
+                  apiBase={apiBase}
+                  apiClient={apiClient}
+                  apiKey={apiKey}
                 />
               </ResizablePanel>
             </>

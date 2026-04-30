@@ -1,5 +1,5 @@
 export interface PromptImageRead {
-  id: number;
+  id: string | number;
   prompt: string;
   image_url: string;
   thumb_url?: string;

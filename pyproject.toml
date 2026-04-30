@@ -1,12 +1,14 @@
-# pyproject.toml
 [project]
 name = "embeddr-extension"
 description = "Embeddr ComfyUI Extension"
 version = "1.2.1"
 license = { file = "LICENSE.md" }
-dependencies = []
-requires-python = ">=3.8"
-
+requires-python = ">=3.10"
+dependencies = [
+    # Most runtime deps (torch, numpy, PIL, aiohttp) are provided by the
+    # ComfyUI host environment. Only declare what we use beyond that.
+    "requests>=2.31.0",
+]
 
 [project.urls]
 Repository = "https://github.com/embeddr-net/embeddr-comfyui"
@@ -16,3 +18,38 @@ PublisherId = "nynxz"
 DisplayName = "Embeddr ComfyUI Extension"
 Icon = "https://avatars.githubusercontent.com/u/251817691"
 includes = ["js"]
+
+[dependency-groups]
+dev = ["ruff>=0.7.0"]
+
+[tool.ruff]
+target-version = "py310"
+line-length = 100
+extend-exclude = ["js", ".venv", "node_modules"]
+
+[tool.ruff.lint]
+select = [
+    "E",   # pycodestyle errors
+    "W",   # pycodestyle warnings
+    "F",   # pyflakes
+    "I",   # isort
+    "B",   # flake8-bugbear
+    "UP",  # pyupgrade
+    "SIM", # flake8-simplify
+    "C4",  # flake8-comprehensions
+    "RUF", # ruff-specific rules
+]
+ignore = [
+    "E501",   # line-too-long (formatter handles wrapping)
+    "B008",   # function-call-in-default-argument (common pattern in ComfyUI nodes)
+    "SIM108", # use-ternary (often less readable)
+]
+
+[tool.ruff.lint.per-file-ignores]
+# ComfyUI nodes follow a specific class naming convention; relax rules
+# that fight that convention.
+"nodes/*.py" = ["N801", "N802", "N803", "N806"]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
